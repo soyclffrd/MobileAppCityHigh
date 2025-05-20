@@ -82,18 +82,21 @@ export default function SettingsScreen() {
             title="Push Notifications"
             value={notifications}
             onValueChange={setNotifications}
+            type="switch"
           />
           <SettingItem
             icon="email"
             title="Email Notifications"
             value={emailNotifications}
             onValueChange={setEmailNotifications}
+            type="switch"
           />
           <SettingItem
             icon="dark-mode"
             title="Dark Mode"
             value={darkMode}
             onValueChange={setDarkMode}
+            type="switch"
           />
         </View>
       </View>
@@ -101,7 +104,7 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
         <View style={styles.sectionContent}>
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/admin/edit-profile' as any)}>
             <View style={styles.settingLeft}>
               <MaterialIcons name="person" size={24} color="#666" />
               <Text style={styles.settingTitle}>Edit Profile</Text>
@@ -150,6 +153,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 100,
   },
   section: {
     backgroundColor: '#fff',

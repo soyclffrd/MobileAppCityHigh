@@ -5,6 +5,8 @@ export interface User {
   id: string;
   email: string;
   role: 'admin' | 'user';
+  name?: string;
+  avatar?: string | null;
 }
 
 export interface AuthContextType {
@@ -12,6 +14,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  updateUser: (userData: Partial<User>) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,11 +44,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       // Here you would typically make an API call to your backend
-      // For now, we'll use mock data
+      // For now, we'll use mock data with added name and avatar fields
       const mockUser: User = {
         id: '1',
         email: email,
         role: 'admin',
+        name: 'Admin User',
+        avatar: null,
       };
 
       // Store user data in AsyncStorage
@@ -68,8 +73,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateUser = async (userData: Partial<User>) => {
+    try {
+      if (user) {
+        const updatedUser = { ...user, ...userData };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

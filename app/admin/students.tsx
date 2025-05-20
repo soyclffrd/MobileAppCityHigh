@@ -17,42 +17,38 @@ import {
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
-interface Teacher {
+interface Student {
   id: string;
   name: string;
-  email: string;
-  subject: string;
   gender: string;
+  gradeLevel: string;
+  strand: string;
+  section: string;
   avatar: string | null;
 }
 
 interface FormData {
   name: string;
-  email: string;
-  subject: string;
   gender: string;
+  gradeLevel: string;
+  strand: string;
+  section: string;
   avatar: string | null;
 }
 
-export default function TeacherManagement() {
+export default function StudentManagement() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [teachers, setTeachers] = useState<Teacher[]>([
+  const [students, setStudents] = useState<Student[]>([
     {
       id: '#9',
       name: 'Emery Daniel',
-      email: 'kyxotofi@mailinator.com',
-      subject: 'Not Assigned',
       gender: 'Female',
+      gradeLevel: 'Grade 8',
+      strand: 'STEM',
+      section: 'Sun Flower',
       avatar: null,
     },
-    {
-      id: '#10',
-      name: 'Venus Chavez',
-      email: 'tepojicuv@mailinator.com',
-      subject: 'Filipino',
-      gender: 'Female',
-      avatar: null,
-    },
+    // Add more sample students as needed
   ]);
 
   const toast = useToast();
@@ -61,45 +57,50 @@ export default function TeacherManagement() {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   // Form states
   const [formData, setFormData] = useState<FormData>({
     name: '',
-    email: '',
-    subject: '',
     gender: '',
+    gradeLevel: '',
+    strand: '',
+    section: '',
     avatar: null,
   });
 
-  const subjects = ['Not Assigned', 'Filipino', 'English', 'Mathematics', 'Science', 'Social Studies'];
+  const gradeLevels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+  const strands = ['STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'Sports', 'Arts & Design'];
+  const sections = ['Sun Flower', 'Rose', 'Tulip', 'Daisy', 'Orchid'];
   const genders = ['Male', 'Female'];
 
-  const handleAddTeacher = () => {
+  const handleAddStudent = () => {
     setFormData({
       name: '',
-      email: '',
-      subject: 'Not Assigned',
       gender: '',
+      gradeLevel: '',
+      strand: '',
+      section: '',
       avatar: null,
     });
     setIsAddModalVisible(true);
   };
 
-  const handleEditTeacher = (teacher: Teacher) => {
-    setSelectedTeacher(teacher);
+  const handleEditStudent = (student: Student) => {
+    setSelectedStudent(student);
     setFormData({
-      name: teacher.name,
-      email: teacher.email,
-      subject: teacher.subject,
-      gender: teacher.gender,
-      avatar: teacher.avatar,
+      name: student.name,
+      gender: student.gender,
+      gradeLevel: student.gradeLevel,
+      strand: student.strand,
+      section: student.section,
+      avatar: student.avatar,
     });
     setIsEditModalVisible(true);
   };
 
-  const handleDeleteTeacher = (teacher: Teacher) => {
-    setSelectedTeacher(teacher);
+  const handleDeleteStudent = (student: Student) => {
+    setSelectedStudent(student);
     setIsDeleteModalVisible(true);
   };
 
@@ -117,57 +118,57 @@ export default function TeacherManagement() {
   };
 
   const handleSubmitAdd = () => {
-    if (!formData.name || !formData.email || !formData.gender) {
+    if (!formData.name || !formData.gender || !formData.gradeLevel || !formData.strand || !formData.section) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    const newTeacher: Teacher = {
-      id: '#' + (teachers.length + 1),
+    const newStudent: Student = {
+      id: '#' + (students.length + 1),
       ...formData,
       avatar: formData.avatar || null,
     };
 
-    setTeachers([...teachers, newTeacher]);
+    setStudents([...students, newStudent]);
     setIsAddModalVisible(false);
-    toast.show('Teacher added successfully!', { type: 'success', placement: 'top' });
+    toast.show('Student added successfully!', { type: 'success', placement: 'top' });
   };
 
   const handleSubmitEdit = () => {
-    if (!formData.name || !formData.email || !formData.gender) {
+    if (!formData.name || !formData.gender || !formData.gradeLevel || !formData.strand || !formData.section) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    if (!selectedTeacher) return;
+    if (!selectedStudent) return;
 
-    const updatedTeachers = teachers.map((teacher) =>
-      teacher.id === selectedTeacher.id
+    const updatedStudents = students.map((student) =>
+      student.id === selectedStudent.id
         ? {
-            ...teacher,
+            ...student,
             ...formData,
-            avatar: formData.avatar || teacher.avatar,
+            avatar: formData.avatar || student.avatar,
           }
-        : teacher
+        : student
     );
 
-    setTeachers(updatedTeachers);
+    setStudents(updatedStudents);
     setIsEditModalVisible(false);
-    toast.show('Teacher updated successfully!', { type: 'success', placement: 'top' });
+    toast.show('Student updated successfully!', { type: 'success', placement: 'top' });
   };
 
   const handleConfirmDelete = () => {
-    if (!selectedTeacher) return;
+    if (!selectedStudent) return;
 
-    const updatedTeachers = teachers.filter(
-      (teacher) => teacher.id !== selectedTeacher.id
+    const updatedStudents = students.filter(
+      (student) => student.id !== selectedStudent.id
     );
-    setTeachers(updatedTeachers);
+    setStudents(updatedStudents);
     setIsDeleteModalVisible(false);
-    toast.show('Teacher deleted successfully!', { type: 'success', placement: 'top' });
+    toast.show('Student deleted successfully!', { type: 'success', placement: 'top' });
   };
 
-  const TeacherForm = ({ isEdit }: { isEdit: boolean }) => {
+  const StudentForm = ({ isEdit }: { isEdit: boolean }) => {
     const [localFormData, setLocalFormData] = useState<FormData>(formData);
 
     useEffect(() => {
@@ -190,7 +191,7 @@ export default function TeacherManagement() {
     return (
       <View style={styles.formContainer}>
         <View style={styles.formHeader}>
-          <Text style={styles.formTitle}>{isEdit ? 'Edit Teacher' : 'Add Teacher'}</Text>
+          <Text style={styles.formTitle}>{isEdit ? 'Edit Student' : 'Add Student'}</Text>
           <TouchableOpacity
             onPress={() => isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false)}
           >
@@ -203,30 +204,8 @@ export default function TeacherManagement() {
           style={styles.input}
           value={localFormData.name}
           onChangeText={(text) => handleLocalChange('name', text)}
-          placeholder="Enter teacher's name"
+          placeholder="Enter student's name"
         />
-
-        <Text style={styles.inputLabel}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={localFormData.email}
-          onChangeText={(text) => handleLocalChange('email', text)}
-          placeholder="Enter teacher's email"
-          keyboardType="email-address"
-        />
-
-        <Text style={styles.inputLabel}>Subject</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={localFormData.subject}
-            onValueChange={(value) => handleLocalChange('subject', value)}
-            style={styles.picker}
-          >
-            {subjects.map((subject) => (
-              <Picker.Item key={subject} label={subject} value={subject} />
-            ))}
-          </Picker>
-        </View>
 
         <Text style={styles.inputLabel}>Gender</Text>
         <View style={styles.pickerContainer}>
@@ -238,6 +217,48 @@ export default function TeacherManagement() {
             <Picker.Item label="Select Gender" value="" />
             {genders.map((gender) => (
               <Picker.Item key={gender} label={gender} value={gender} />
+            ))}
+          </Picker>
+        </View>
+
+        <Text style={styles.inputLabel}>Grade Level</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={localFormData.gradeLevel}
+            onValueChange={(value) => handleLocalChange('gradeLevel', value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select Grade Level" value="" />
+            {gradeLevels.map((level) => (
+              <Picker.Item key={level} label={level} value={level} />
+            ))}
+          </Picker>
+        </View>
+
+        <Text style={styles.inputLabel}>Strand</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={localFormData.strand}
+            onValueChange={(value) => handleLocalChange('strand', value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select Strand" value="" />
+            {strands.map((strand) => (
+              <Picker.Item key={strand} label={strand} value={strand} />
+            ))}
+          </Picker>
+        </View>
+
+        <Text style={styles.inputLabel}>Section</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={localFormData.section}
+            onValueChange={(value) => handleLocalChange('section', value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select Section" value="" />
+            {sections.map((section) => (
+              <Picker.Item key={section} label={section} value={section} />
             ))}
           </Picker>
         </View>
@@ -264,7 +285,7 @@ export default function TeacherManagement() {
             onPress={handleSubmit}
           >
             <Text style={styles.submitButtonText}>
-              {isEdit ? 'Update Teacher' : 'Add Teacher'}
+              {isEdit ? 'Update Student' : 'Add Student'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -275,14 +296,13 @@ export default function TeacherManagement() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
       {/* Header with Search */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
           <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search teacher..."
+            placeholder="Search student..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#666"
@@ -295,24 +315,22 @@ export default function TeacherManagement() {
           </View>
         </TouchableOpacity>
       </View>
-
       {/* Title and Add Button */}
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Teacher Management</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddTeacher}>
+        <Text style={styles.title}>Student Management</Text>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddStudent}>
           <MaterialIcons name="add" size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Add Teacher</Text>
+          <Text style={styles.addButtonText}>Add Student</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Teacher List */}
+      {/* Student List */}
       <ScrollView style={styles.teacherList}>
-        {teachers.map((teacher) => (
-          <View key={teacher.id} style={styles.teacherCard}>
+        {students.map((student) => (
+          <View key={student.id} style={styles.teacherCard}>
             <View style={styles.teacherInfo}>
-              {teacher.avatar ? (
+              {student.avatar ? (
                 <Image 
-                  source={{ uri: teacher.avatar }}
+                  source={{ uri: student.avatar }}
                   style={styles.avatar} 
                 />
               ) : (
@@ -321,34 +339,38 @@ export default function TeacherManagement() {
                 </View>
               )}
               <View style={styles.teacherDetails}>
-                <Text style={styles.teacherName}>{teacher.name}</Text>
+                <Text style={styles.teacherName}>{student.name}</Text>
                 <View style={styles.genderBadge}>
-                  <Text style={styles.genderText}>{teacher.gender}</Text>
+                  <Text style={styles.genderText}>{student.gender}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>ID:</Text>
-                  <Text style={styles.detailValue}>{teacher.id}</Text>
+                  <Text style={styles.detailValue}>{student.id}</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Email:</Text>
-                  <Text style={styles.detailValue}>{teacher.email}</Text>
+                  <Text style={styles.detailLabel}>Grade Level:</Text>
+                  <Text style={styles.detailValue}>{student.gradeLevel}</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Subject:</Text>
-                  <Text style={styles.detailValue}>{teacher.subject}</Text>
+                  <Text style={styles.detailLabel}>Strand:</Text>
+                  <Text style={styles.detailValue}>{student.strand}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Section:</Text>
+                  <Text style={styles.detailValue}>{student.section}</Text>
                 </View>
               </View>
             </View>
             <View style={styles.actionButtons}>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.editButton]}
-                onPress={() => handleEditTeacher(teacher)}
+                onPress={() => handleEditStudent(student)}
               >
                 <Text style={styles.actionButtonText}>Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => handleDeleteTeacher(teacher)}
+                onPress={() => handleDeleteStudent(student)}
               >
                 <Text style={styles.actionButtonText}>Delete</Text>
               </TouchableOpacity>
@@ -356,29 +378,26 @@ export default function TeacherManagement() {
           </View>
         ))}
       </ScrollView>
-
-      {/* Add Teacher Modal */}
+      {/* Add Student Modal */}
       <Modal
         visible={isAddModalVisible}
         animationType="slide"
         transparent={true}
       >
         <View style={styles.modalContainer}>
-          <TeacherForm isEdit={false} />
+          <StudentForm isEdit={false} />
         </View>
       </Modal>
-
-      {/* Edit Teacher Modal */}
+      {/* Edit Student Modal */}
       <Modal
         visible={isEditModalVisible}
         animationType="slide"
         transparent={true}
       >
         <View style={styles.modalContainer}>
-          <TeacherForm isEdit={true} />
+          <StudentForm isEdit={true} />
         </View>
       </Modal>
-
       {/* Delete Confirmation Modal */}
       <Modal
         visible={isDeleteModalVisible}
@@ -387,9 +406,9 @@ export default function TeacherManagement() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.deleteConfirmation}>
-            <Text style={styles.deleteTitle}>Are you sure you want to delete this teacher?</Text>
+            <Text style={styles.deleteTitle}>Are you sure you want to delete this student?</Text>
             <Text style={styles.deleteMessage}>
-              This action cannot be undone. This will permanently delete the teacher record from the database.
+              This action cannot be undone. This will permanently delete the student record from the database.
             </Text>
             <View style={styles.deleteActions}>
               <TouchableOpacity
@@ -713,4 +732,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#fff',
   },
-}); 
+});

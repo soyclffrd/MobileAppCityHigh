@@ -1,9 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardOverview() {
   const { user } = useAuth();
+  const router = useRouter();
 
   const stats = [
     { title: 'Total Teachers', value: '24', icon: 'school', color: '#4CAF50' },
@@ -15,8 +17,6 @@ export default function DashboardOverview() {
   const quickActions = [
     { title: 'Add Teacher', icon: 'person-add', color: '#4CAF50', route: '/admin/teachers' },
     { title: 'Add Student', icon: 'person-add', color: '#2196F3', route: '/admin/students' },
-    { title: 'Create Class', icon: 'add-circle', color: '#FF9800', route: '/admin/classes' },
-    { title: 'View Reports', icon: 'assessment', color: '#9C27B0', route: '/admin/reports' },
   ];
 
   const recentActivities = [
@@ -31,8 +31,8 @@ export default function DashboardOverview() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userText}>{user?.email || 'Admin'}</Text>
+          <Text style={styles.welcomeText}>Hello,</Text>
+          <Text style={styles.userText}>{user?.name || 'Admin'}</Text>
         </View>
         <TouchableOpacity style={styles.notificationButton}>
           <MaterialIcons name="notifications" size={24} color="#fff" />
@@ -60,7 +60,7 @@ export default function DashboardOverview() {
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsContainer}>
           {quickActions.map((action, index) => (
-            <TouchableOpacity key={index} style={styles.actionCard}>
+            <TouchableOpacity key={index} style={styles.actionCard} onPress={() => router.push(action.route as any)}>
               <View style={[styles.actionIcon, { backgroundColor: action.color + '20' }]}>
                 <MaterialIcons name={action.icon as any} size={24} color={action.color} />
               </View>
@@ -75,7 +75,7 @@ export default function DashboardOverview() {
         <Text style={styles.sectionTitle}>Recent Activity</Text>
         <View style={styles.activityContainer}>
           {recentActivities.map((activity, index) => (
-            <View key={index} style={styles.activityCard}>
+            <TouchableOpacity key={index} style={styles.activityCard} onPress={() => Alert.alert('Activity Details', `Title: ${activity.title}\nTime: ${activity.time}`) }>
               <View style={styles.activityIcon}>
                 <MaterialIcons name={activity.icon as any} size={24} color="#666" />
               </View>
@@ -83,7 +83,7 @@ export default function DashboardOverview() {
                 <Text style={styles.activityTitle}>{activity.title}</Text>
                 <Text style={styles.activityTime}>{activity.time}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </View>
@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -187,7 +188,8 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 10,
   },
   actionCard: {
     backgroundColor: '#fff',
