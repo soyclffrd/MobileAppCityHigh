@@ -67,6 +67,11 @@ export default function Dashboard(): JSX.Element {
     alert('Logout clicked!');
   };
 
+  // Add the handler at the top of the component
+  const handleDownloadSchedule = () => {
+    alert('Download Schedule button pressed!');
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -162,10 +167,11 @@ export default function Dashboard(): JSX.Element {
                   <Text style={[styles.sectionHeader, isSmallScreen && { fontSize: 14 }]}>Class Schedule</Text>
                   <Input placeholder="Search classes or teachers..." />
                 </View>
+                <Button title="Download Schedule" variant="outline" onPress={handleDownloadSchedule} />
                 {subjects.map((subject, index) => (
                   <Card key={index}>
                     <CardContent>
-                      <View style={[styles.classRow, isSmallScreen && { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
+                      <View style={[styles.classRow, isSmallScreen && { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}> 
                         <View>
                           <Text style={[styles.className, isSmallScreen && { fontSize: 14 }]}>{subject.name}</Text>
                           <View style={styles.classTimeRow}>
