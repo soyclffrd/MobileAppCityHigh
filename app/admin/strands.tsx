@@ -1,17 +1,17 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  Alert,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -274,8 +274,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1a73e8',
-    padding: 16,
-    paddingTop: (StatusBar.currentHeight || 0) + 16,
+    padding: 8,
+    paddingTop: (StatusBar.currentHeight || 0) + 8,
     borderBottomWidth: 0,
   },
   searchContainer: {
@@ -283,62 +283,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-      }
-    }),
+    borderRadius: 6,
+    padding: 6,
+    marginRight: 8,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
   searchInput: {
     flex: 1,
-    height: 32,
+    height: 28,
     fontSize: 14,
-    color: '#333',
+    color: '#000',
   },
   notificationButton: {
     position: 'relative',
+    padding: 6,
   },
   notificationBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: 2,
+    right: 2,
     backgroundColor: '#ff4444',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   notificationText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: 'transparent',
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: '#333',
     flex: 1,
@@ -347,18 +334,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1976D2',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    minWidth: 120,
+    minWidth: 100,
     justifyContent: 'center',
   },
   addButtonText: {
@@ -368,13 +347,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   teacherList: {
-    padding: 16,
+    padding: 12,
   },
   teacherCard: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -383,7 +362,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
       web: {
         boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
@@ -409,36 +388,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   teacherName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   detailRow: {
     flexDirection: 'row',
     marginBottom: 4,
   },
   detailLabel: {
-    width: 60,
-    fontSize: 14,
+    width: 80,
+    fontSize: 13,
     color: '#666',
   },
   detailValue: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#333',
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    borderTopWidth: 0,
-    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 12,
+    marginTop: 8,
   },
   actionButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 6,
-    marginLeft: 12,
+    marginLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   editButton: {
     backgroundColor: '#1a73e8',
@@ -451,11 +434,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
   formContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
-    maxHeight: '90%',
+    padding: 24,
+    width: '90%',
+    maxWidth: 500,
+    alignSelf: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   formHeader: {
     flexDirection: 'row',
@@ -471,15 +476,25 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
+    fontSize: 14,
+    color: '#333',
     marginBottom: 16,
-    fontSize: 16,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  picker: {
+    height: 50,
   },
   formActions: {
     flexDirection: 'row',
@@ -496,10 +511,10 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#1a73e8',
-    borderRadius: 8,
     padding: 12,
-    minWidth: 120,
+    borderRadius: 8,
     alignItems: 'center',
+    marginTop: 8,
   },
   submitButtonText: {
     color: '#fff',
@@ -561,12 +576,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#fff',
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
 });
 

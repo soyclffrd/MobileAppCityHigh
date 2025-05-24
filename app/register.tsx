@@ -83,19 +83,22 @@ export default function Register() {
   };
 
   return (
-    <ImageBackground
-      source={require('../assets/images/login-.png')}
-      style={styles.backgroundImage}
-    >
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
+      <ImageBackground
+        source={require('../assets/images/login-.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.content}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <ScrollView 
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             <View style={styles.formWrapper}>
               <TouchableOpacity 
@@ -107,7 +110,7 @@ export default function Register() {
                 <MaterialIcons name="arrow-back" size={24} color="#333" />
               </TouchableOpacity>
               
-              <Text style={styles.title}>Register</Text>
+              <Text style={styles.title}>Create Account</Text>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Name</Text>
                 <TextInput
@@ -116,6 +119,7 @@ export default function Register() {
                   value={name}
                   onChangeText={setName}
                   accessibilityLabel="Name input"
+                  placeholderTextColor="#999"
                 />
                 {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
               </View>
@@ -129,6 +133,7 @@ export default function Register() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   accessibilityLabel="Email input"
+                  placeholderTextColor="#999"
                 />
                 {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
               </View>
@@ -141,6 +146,7 @@ export default function Register() {
                   onChangeText={setPassword}
                   secureTextEntry
                   accessibilityLabel="Password input"
+                  placeholderTextColor="#999"
                 />
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
               </View>
@@ -153,6 +159,7 @@ export default function Register() {
                   onChangeText={setConfirmPassword}
                   secureTextEntry
                   accessibilityLabel="Confirm password input"
+                  placeholderTextColor="#999"
                 />
                 {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
               </View>
@@ -165,22 +172,23 @@ export default function Register() {
                 accessibilityState={{ disabled: loading }}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.buttonText}>Register</Text>
+                  <Text style={styles.buttonText}>Sign Up</Text>
                 )}
               </TouchableOpacity>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ImageBackground>
+      </ImageBackground>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   backgroundImage: {
     flex: 1,
@@ -192,73 +200,105 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+    justifyContent: 'center',
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
   },
   formWrapper: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 15,
-    padding: 20,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
-    marginTop: 40,
-    marginBottom: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   backButton: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 16,
+    left: 16,
     zIndex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 32,
     textAlign: 'center',
     color: '#333',
     marginTop: 20,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
-    marginBottom: 5,
+    marginBottom: 8,
     color: '#333',
+    fontWeight: '600',
   },
   input: {
     backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    fontSize: 16,
+    color: '#333',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   inputError: {
-    borderColor: '#ff0000',
+    borderColor: '#ff3b30',
+    borderWidth: 1,
   },
   errorText: {
-    color: '#ff0000',
-    fontSize: 12,
-    marginTop: 5,
+    color: '#ff3b30',
+    fontSize: 14,
+    marginTop: 6,
+    fontWeight: '500',
   },
   button: {
     backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    width: '100%',
-    maxWidth: 400,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
   },
 }); 

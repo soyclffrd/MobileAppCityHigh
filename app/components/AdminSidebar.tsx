@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 interface AdminSidebarProps {
@@ -11,8 +11,11 @@ interface AdminSidebarProps {
 
 const AdminSidebar = ({ isCollapsed, toggleSidebar }: AdminSidebarProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { width } = Dimensions.get('window');
+  const isMobile = width < 768;
 
   const navigateTo = (route: string) => {
     router.push(route as any);
@@ -48,9 +51,17 @@ const AdminSidebar = ({ isCollapsed, toggleSidebar }: AdminSidebarProps) => {
   };
 
   return (
-    <View style={[styles.sidebar, isCollapsed ? styles.sidebarCollapsed : styles.sidebarExpanded]}>
+    <View style={[
+      styles.sidebar,
+      isCollapsed ? styles.sidebarCollapsed : styles.sidebarExpanded,
+      isMobile && styles.sidebarMobile
+    ]}>
       <TouchableOpacity onPress={toggleSidebar} style={styles.toggleButton}>
-        <Text style={styles.toggleButtonText}>{isCollapsed ? '>' : '<'}</Text>
+        <MaterialIcons 
+          name={isCollapsed ? 'menu' : 'close'} 
+          size={24} 
+          color="#666" 
+        />
       </TouchableOpacity>
 
       {!isCollapsed && (
@@ -75,9 +86,19 @@ const AdminSidebar = ({ isCollapsed, toggleSidebar }: AdminSidebarProps) => {
               { icon: '👤', text: 'Users', route: '/admin/users' },
               { icon: '⚙️', text: 'Settings', route: '/admin/settings' },
             ].map(({ icon, text, route }) => (
-              <TouchableOpacity key={text} style={styles.menuItem} onPress={() => navigateTo(route)}>
+              <TouchableOpacity 
+                key={text} 
+                style={[
+                  styles.menuItem,
+                  pathname === route && styles.activeMenuItem
+                ]} 
+                onPress={() => navigateTo(route)}
+              >
                 <Text style={styles.menuIcon}>{icon}</Text>
-                <Text style={styles.menuText}>{text}</Text>
+                <Text style={[
+                  styles.menuText,
+                  pathname === route && styles.activeMenuText
+                ]}>{text}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -91,7 +112,20 @@ const AdminSidebar = ({ isCollapsed, toggleSidebar }: AdminSidebarProps) => {
           ].map((icon, index) => (
             <TouchableOpacity
               key={icon}
-              style={styles.collapsedMenuItem}
+              style={[
+                styles.collapsedMenuItem,
+                pathname === [
+                  '/admin/dashboardoverview',
+                  '/admin/teachers',
+                  '/admin/students',
+                  '/admin/subjects',
+                  '/admin/strands',
+                  '/admin/gradelevels',
+                  '/admin/section',
+                  '/admin/users',
+                  '/admin/settings',
+                ][index] && styles.activeCollapsedMenuItem
+              ]}
               onPress={() => navigateTo([
                 '/admin/dashboardoverview',
                 '/admin/teachers',
@@ -111,7 +145,11 @@ const AdminSidebar = ({ isCollapsed, toggleSidebar }: AdminSidebarProps) => {
       )}
 
       <TouchableOpacity
-        style={[styles.logoutButton, isCollapsed ? styles.collapsedLogoutButton : null, isLoggingOut && styles.logoutButtonDisabled]}
+        style={[
+          styles.logoutButton,
+          isCollapsed ? styles.collapsedLogoutButton : null,
+          isLoggingOut && styles.logoutButtonDisabled
+        ]}
         onPress={handleLogout}
         disabled={isLoggingOut}
       >
@@ -130,15 +168,37 @@ const AdminSidebar = ({ isCollapsed, toggleSidebar }: AdminSidebarProps) => {
 
 const styles = StyleSheet.create({
   sidebar: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 20,
-    borderRightWidth: 1,
-    borderColor: '#ddd',
-    position: 'relative',
+    backgroundColor: '#fff',
     height: '100%',
+    borderRightWidth: 1,
+    borderColor: '#e0e0e0',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 1000,
+    ...Platform.select({
+      web: {
+        boxShadow: '2px 0 5px rgba(0, 0, 0, 0.05)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+      },
+    }),
+  },
+  sidebarMobile: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 1000,
   },
   sidebarExpanded: {
-    width: 200,
+    width: 220,
   },
   sidebarCollapsed: {
     width: 60,
@@ -146,89 +206,108 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    padding: 5,
+    top: 24,
+    right: 12,
+    padding: 8,
     zIndex: 1,
   },
-  toggleButtonText: {
-    fontSize: 18,
-  },
   sidebarContent: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
+    paddingTop: 72,
+    paddingBottom: 80,
+    width: '100%',
   },
   schoolInfo: {
     alignItems: 'center',
     marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    width: '100%',
   },
   schoolLogo: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     marginBottom: 10,
   },
   schoolName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
   },
   menu: {
-    marginTop: 20,
+    marginTop: 12,
+    width: '100%',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-    marginBottom: 5,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    marginBottom: 3,
+    borderRadius: 8,
+    width: '100%',
+  },
+  activeMenuItem: {
+    backgroundColor: '#f0f7ff',
   },
   menuIcon: {
-    fontSize: 20,
-    marginRight: 10,
+    fontSize: 22,
+    width: 28,
+    height: 28,
+    textAlign: 'center',
+    lineHeight: 28,
+    marginRight: 12,
   },
   menuText: {
-    fontSize: 16,
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  activeMenuText: {
+    color: '#1a73e8',
+    fontWeight: '500',
   },
   collapsedMenu: {
-    marginTop: 20,
+    marginTop: 72,
     alignItems: 'center',
+    paddingBottom: 80,
+    width: '100%',
   },
   collapsedMenuItem: {
-    paddingVertical: 10,
-    marginBottom: 5,
+    paddingVertical: 11,
+    marginBottom: 3,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  activeCollapsedMenuItem: {
+    backgroundColor: '#f0f7ff',
   },
   logoutButton: {
     position: 'absolute',
-    bottom: 20,
-    left: 10,
-    right: 10,
+    bottom: 12,
+    left: 12,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
-    padding: 10,
+    padding: 8,
     borderRadius: 8,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   collapsedLogoutButton: {
     left: 0,
     right: 0,
     borderRadius: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 0,
     backgroundColor: 'transparent',
-    shadowColor: 'transparent',
-    elevation: 0,
   },
   logoutButtonDisabled: {
     opacity: 0.7,
@@ -236,11 +315,13 @@ const styles = StyleSheet.create({
   logoutContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   logoutText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FF3B30',
     marginLeft: 8,
+    fontWeight: '500',
   },
 });
 

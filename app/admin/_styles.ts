@@ -3,51 +3,89 @@ import { Platform, StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
     paddingBottom: 100,
   },
   header: {
-    padding: 16,
+    padding: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e9ecef',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 12,
+    color: '#6c757d',
   },
   searchInput: {
     flex: 1,
     height: 40,
     fontSize: 16,
+    color: '#212529',
   },
   titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e9ecef',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212529',
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#0d6efd',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   addButtonText: {
     color: '#fff',
@@ -61,9 +99,30 @@ export const styles = StyleSheet.create({
   },
   teacherCard: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  actionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -72,28 +131,15 @@ export const styles = StyleSheet.create({
         shadowRadius: 4,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
-      default: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-      }
     }),
   },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
   editButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#0d6efd',
   },
   deleteButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#dc3545',
   },
   actionButtonText: {
     color: '#fff',
@@ -108,10 +154,21 @@ export const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 24,
     width: '90%',
     maxWidth: 500,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   formHeader: {
     flexDirection: 'row',
@@ -120,44 +177,59 @@ export const styles = StyleSheet.create({
     marginBottom: 24,
   },
   formTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212529',
   },
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#212529',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: '#ced4da',
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
     marginBottom: 16,
+    backgroundColor: '#fff',
+    color: '#212529',
   },
   formActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
+    gap: 16,
     marginTop: 24,
   },
   cancelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
   },
   submitButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#0d6efd',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   cancelButtonText: {
-    color: '#666',
+    color: '#6c757d',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -168,37 +240,62 @@ export const styles = StyleSheet.create({
   },
   deleteConfirmation: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 24,
     width: '90%',
     maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   deleteTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212529',
     marginBottom: 16,
   },
   deleteMessage: {
     fontSize: 16,
-    color: '#666',
+    color: '#6c757d',
     marginBottom: 24,
+    lineHeight: 24,
   },
   deleteActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
+    gap: 16,
   },
   deleteAction: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   cancelDelete: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
   },
   confirmDelete: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#dc3545',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   deleteActionText: {
     fontSize: 16,

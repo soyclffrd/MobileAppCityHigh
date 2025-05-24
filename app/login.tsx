@@ -17,6 +17,13 @@ import {
 } from 'react-native';
 import { useAuth } from './context/AuthContext';
 
+// API Configuration
+const API_BASE_URL = Platform.select({
+  ios: 'http://192.168.0.102:3001', // Your actual IP address
+  android: 'http://192.168.0.102:3001', // Your actual IP address
+  default: 'http://192.168.0.102:3001'  // Your actual IP address
+});
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,13 +50,28 @@ export default function Login() {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      const res = await fetch('http://192.168.1.33:3001/api/login', {
+      console.log('Attempting login to:', API_BASE_URL + '/api/auth/login');
+      const res = await fetch(API_BASE_URL + '/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      console.log('Login response:', data); // Debug log
+      
+      console.log('Response status:', res.status);
+      const text = await res.text();
+      console.log('Raw response:', text);
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('JSON parse error:', e);
+        Alert.alert('Error', 'Invalid server response');
+        return;
+      }
+      
+      console.log('Parsed response:', data);
+      
       if (data.success) {
         setUser(data.user);
         if (data.user.role === 'user') {
@@ -78,21 +100,24 @@ export default function Login() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
       <ImageBackground
         source={require('../assets/images/login-.png')}
         style={styles.backgroundImage}
+        resizeMode="cover"
       >
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.content}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <ScrollView 
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             <View style={styles.formWrapper}>
-              <Text style={styles.title}>Login</Text>
+              <Text style={styles.title}>Welcome Back</Text>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
@@ -103,6 +128,7 @@ export default function Login() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   accessibilityLabel="Email input"
+                  placeholderTextColor="#999"
                 />
                 {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
               </View>
@@ -115,6 +141,7 @@ export default function Login() {
                   onChangeText={setPassword}
                   secureTextEntry
                   accessibilityLabel="Password input"
+                  placeholderTextColor="#999"
                 />
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
               </View>
@@ -127,15 +154,15 @@ export default function Login() {
                 accessibilityState={{ disabled: loading }}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.buttonText}>Login</Text>
+                  <Text style={styles.buttonText}>Sign In</Text>
                 )}
               </TouchableOpacity>
               <View style={styles.registerContainer}>
-                <Text style={styles.registerText}>Don't have an account? </Text>
+                <Text style={styles.registerText}>Don't have an account?</Text>
                 <TouchableOpacity onPress={() => router.push('/register')}>
-                  <Text style={styles.registerLink}>Register</Text>
+                  <Text style={styles.registerLink}>Sign Up</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -161,78 +188,103 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+    justifyContent: 'center',
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
   },
   formWrapper: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 15,
-    padding: 20,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
-    marginTop: 40,
-    marginBottom: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 32,
     textAlign: 'center',
     color: '#333',
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
-    marginBottom: 5,
+    marginBottom: 8,
     color: '#333',
+    fontWeight: '600',
   },
   input: {
     backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ddd',
+    fontSize: 16,
+    color: '#333',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   inputError: {
-    borderColor: '#ff0000',
+    borderColor: '#ff3b30',
+    borderWidth: 1,
   },
   errorText: {
-    color: '#ff0000',
-    fontSize: 12,
-    marginTop: 5,
+    color: '#ff3b30',
+    fontSize: 14,
+    marginTop: 6,
+    fontWeight: '500',
   },
   button: {
     backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 24,
+    paddingHorizontal: 16,
   },
   registerText: {
     color: '#666',
+    fontSize: 16,
   },
   registerLink: {
     color: '#007AFF',
+    fontSize: 16,
     fontWeight: 'bold',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    width: '100%',
-    maxWidth: 400,
-    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+    marginLeft: 4,
   },
 }); 

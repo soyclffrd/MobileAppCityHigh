@@ -2,13 +2,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 export default function SettingsScreen() {
@@ -123,65 +124,56 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingBottom: 100,
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   section: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
+    marginHorizontal: 12,
     marginBottom: 15,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#666',
-    marginLeft: 20,
     marginBottom: 10,
   },
   sectionContent: {
     backgroundColor: '#fff',
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-      },
-    }),
+    borderRadius: 8,
   },
   settingItem: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    ...Platform.select({
-      web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-      },
-    }),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   settingTitle: {
     fontSize: 16,
     color: '#333',
     marginLeft: 15,
+    flex: 1,
   },
 }); 

@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardOverview() {
@@ -29,9 +29,9 @@ export default function DashboardOverview() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.welcomeText}>Hello,</Text>
-          <Text style={styles.userText}>{user?.name || 'Admin'}</Text>
+        <View style={styles.searchContainer}>
+          <MaterialIcons name="search" size={24} style={styles.searchIcon} />
+          <TextInput style={styles.searchInput} placeholder="Search" />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
           <MaterialIcons name="notifications" size={24} color="#fff" />
@@ -39,6 +39,10 @@ export default function DashboardOverview() {
             <Text style={styles.notificationText}>3</Text>
           </View>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>Hello, {user?.name || 'Admin'}</Text>
       </View>
 
       <View style={styles.statsContainer}>
@@ -91,66 +95,77 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#1a73e8',
-    padding: 20,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    padding: 8,
+    paddingTop: (StatusBar.currentHeight || 0) + 8,
+    borderBottomWidth: 0,
   },
-  headerContent: {
+  searchContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    padding: 6,
+    marginRight: 8,
   },
-  welcomeText: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.8,
+  searchIcon: {
+    marginRight: 6,
   },
-  userText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+  searchInput: {
+    flex: 1,
+    height: 28,
+    fontSize: 14,
+    color: '#000',
   },
   notificationButton: {
     position: 'relative',
-    padding: 8,
+    padding: 6,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: 2,
+    right: 2,
     backgroundColor: '#ff4444',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   notificationText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
+  },
+  titleContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#333',
   },
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 10,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+    padding: 12,
+    gap: 12,
   },
   statCard: {
+    flex: 1,
+    minWidth: '45%',
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    marginRight: 10,
+    borderRadius: 12,
+    padding: 16,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -159,7 +174,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
       web: {
         boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
@@ -167,12 +182,12 @@ const styles = StyleSheet.create({
     }),
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   statValue: {
     fontSize: 24,
@@ -185,7 +200,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   section: {
-    padding: 20,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -197,9 +212,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    paddingHorizontal: 10,
   },
   actionCard: {
+    flex: 1,
+    minWidth: '45%',
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
@@ -250,26 +266,44 @@ const styles = StyleSheet.create({
     }),
   },
   activityCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     flexDirection: 'row',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   activityIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 12,
   },
   activityContent: {
     flex: 1,
   },
   activityTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
   },
   activityTime: {
     fontSize: 12,
