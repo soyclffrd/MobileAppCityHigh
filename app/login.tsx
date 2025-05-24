@@ -23,7 +23,7 @@ export default function Login() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { setUser } = useAuth();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -43,14 +43,37 @@ export default function Login() {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      await login(email, password);
-      // Redirect to admin dashboard if login is successful
-      router.replace('/admin/dashboardoverview');
-    } catch (error) {
-      Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
-    } finally {
-      setLoading(false);
+      const res = await fetch('http://192.168.1.33:3001/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      console.log('Login response:', data); // Debug log
+      if (data.success) {
+        setUser(data.user);
+        if (data.user.role === 'user') {
+          console.log('Navigating to /user/dashboard');
+          router.replace('/user/dashboard');
+        } else if (data.user.role === 'admin') {
+          console.log('Navigating to /admin/dashboardoverview');
+          try {
+            router.replace('/admin/dashboardoverview');
+          } catch (err) {
+            console.error('Navigation error:', err);
+            Alert.alert('Navigation Error', 'Could not navigate to admin dashboard.');
+          }
+        } else {
+          Alert.alert('Login Failed', 'Unauthorized role.');
+        }
+      } else {
+        Alert.alert('Login Failed', data.message || 'Invalid credentials.');
+      }
+    } catch (e) {
+      console.error('Login error:', e);
+      Alert.alert('Error', 'Could not connect to server.');
     }
+    setLoading(false);
   };
 
   return (

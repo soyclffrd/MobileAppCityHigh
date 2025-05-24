@@ -15,12 +15,13 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   isLoading: boolean;
   updateUser: (userData: Partial<User>) => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        setUserState(JSON.parse(storedUser));
       }
     } catch (error) {
       console.error('Error loading stored user:', error);
@@ -55,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store user data in AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(mockUser));
-      setUser(mockUser);
+      setUserState(mockUser);
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear all stored user data
       await AsyncStorage.clear();
       // Reset user state
-      setUser(null);
+      setUserState(null);
       // Reset loading state
       setIsLoading(false);
     } catch (error) {
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         const updatedUser = { ...user, ...userData };
         await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
+        setUserState(updatedUser);
       }
     } catch (error) {
       console.error('Error updating user:', error);
@@ -89,8 +90,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add setUser function
+  const setUser = (userObj: User | null) => {
+    setUserState(userObj);
+    if (userObj) {
+      AsyncStorage.setItem('user', JSON.stringify(userObj));
+    } else {
+      AsyncStorage.removeItem('user');
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, updateUser, setUser }}>
       {children}
     </AuthContext.Provider>
   );

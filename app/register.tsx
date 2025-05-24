@@ -2,19 +2,19 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ImageBackground,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuth } from './context/AuthContext';
 
@@ -59,15 +59,27 @@ export default function Register() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!validateForm()) return;
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      Alert.alert('Registration Successful', 'You can now log in with your credentials.', [
-        { text: 'OK', onPress: () => router.replace('/login') },
-      ]);
-    }, 700);
+    try {
+      const res = await fetch('http://192.168.1.33:3001/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role: 'user' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert('Registration Successful', 'You can now log in.', [
+          { text: 'OK', onPress: () => router.replace('/login') },
+        ]);
+      } else {
+        Alert.alert('Registration Failed', data.message || 'Try again.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not connect to server.');
+    }
+    setLoading(false);
   };
 
   return (

@@ -4,7 +4,7 @@ import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View }
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardOverview() {
-  const { user } = useAuth();
+  const { user, login, updateUser, setUser } = useAuth();
   const router = useRouter();
 
   const stats = [
