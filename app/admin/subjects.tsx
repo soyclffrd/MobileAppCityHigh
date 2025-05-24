@@ -2,26 +2,27 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  FlatList,
   Modal,
   Platform,
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
 interface Subject {
-  id: string;
+  id: number;
   name: string;
   code: string;
   status: 'Available' | 'Unavailable';
-  gradeLevel: string;
+  grade_level: string;
   strand: string;
   students: number;
   description: string;
@@ -31,28 +32,77 @@ interface FormData {
   name: string;
   code: string;
   status: 'Available' | 'Unavailable';
-  gradeLevel: string;
+  grade_level: string;
   strand: string;
-  students: number;
+  students: string;
   description: string;
 }
 
-export default function SubjectManagement() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [subjects, setSubjects] = useState<Subject[]>([
-    {
-      id: '#18',
-      name: 'Physics 1',
-      code: 'aconiles992',
-      status: 'Available',
-      gradeLevel: 'Grade 12',
-      strand: 'No Strand',
-      students: 12,
-      description: 'This subject is designed for Grade 12 students in the No Strand strand. Currently has 12 enrolled students.',
-    },
-    // Add more sample subjects as needed
-  ]);
+const API_URL = 'http://192.168.0.102:3001/api';
 
+// Add debounce delay constant
+const DEBOUNCE_DELAY = 1000; // 1 second delay
+const ITEMS_PER_PAGE = 10;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+
+// Add timeout configuration
+const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 30000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': (options.headers as Record<string, string>)?.['Content-Type'] || 'application/json',
+      },
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error: unknown) {
+    clearTimeout(id);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    throw error;
+  }
+};
+
+// Add this constant at the top of the file, after the interfaces
+const INITIAL_FORM_DATA: FormData = {
+  name: '',
+  code: '',
+  status: 'Available' as const,
+  grade_level: '',
+  strand: '',
+  students: '0',
+  description: '',
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'Available':
+      return '#4CAF50';
+    case 'Unavailable':
+      return '#F44336';
+    default:
+      return '#666';
+  }
+};
+
+const SubjectsScreen = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const toast = useToast();
 
   // Modal states
@@ -63,30 +113,96 @@ export default function SubjectManagement() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   // Form states
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    code: '',
-    status: 'Available',
-    gradeLevel: '',
-    strand: '',
-    students: 0,
-    description: '',
-  });
+  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
 
   const gradeLevels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
   const strands = ['No Strand', 'STEM', 'ABM', 'HUMSS', 'GAS', 'TVL', 'Sports', 'Arts & Design'];
   const statuses = ['Available', 'Unavailable'];
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        setPage(1);
+        setSubjects([]);
+        fetchSubjects(true);
+      }
+    }, DEBOUNCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSubjects(true);
+  }, []);
+
+  const fetchSubjects = async (isRefresh = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const pageNum = isRefresh ? 1 : page;
+      const response = await fetchWithTimeout(
+        `${API_URL}/subjects?page=${pageNum}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch subjects');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch subjects');
+      }
+
+      setSubjects(isRefresh ? data.subjects : [...subjects, ...data.subjects]);
+      setHasMore(data.subjects.length === ITEMS_PER_PAGE);
+      setPage(pageNum);
+      setRetryCount(0);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch subjects');
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          fetchSubjects(isRefresh);
+        }, RETRY_DELAY);
+      }
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchSubjects(true);
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore && !isLoadingMore) {
+      setIsLoadingMore(true);
+      fetchSubjects(true);
+    }
+  };
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    fetchSubjects(true);
+  };
+
   const handleAddSubject = () => {
-    setFormData({
-      name: '',
-      code: '',
-      status: 'Available',
-      gradeLevel: '',
-      strand: '',
-      students: 0,
-      description: '',
-    });
+    setFormData(INITIAL_FORM_DATA);
     setIsAddModalVisible(true);
   };
 
@@ -96,9 +212,9 @@ export default function SubjectManagement() {
       name: subject.name,
       code: subject.code,
       status: subject.status,
-      gradeLevel: subject.gradeLevel,
+      grade_level: subject.grade_level,
       strand: subject.strand,
-      students: subject.students,
+      students: subject.students.toString(),
       description: subject.description,
     });
     setIsEditModalVisible(true);
@@ -114,88 +230,268 @@ export default function SubjectManagement() {
     setIsViewModalVisible(true);
   };
 
-  const handleSubmitAdd = () => {
-    if (!formData.name || !formData.code || !formData.gradeLevel || !formData.strand) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
+  const handleSubmitAdd = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Validate required fields before submission
+      if (!formData.name?.trim() || !formData.code?.trim() || !formData.grade_level?.trim() || !formData.strand?.trim()) {
+        toast.show('Please fill in all required fields', { type: 'error' });
+        return;
+      }
+
+      console.log('Adding new subject with data:', formData);
+
+      const response = await fetchWithTimeout(`${API_URL}/subjects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          code: formData.code.trim(),
+          status: formData.status || 'Available',
+          gradeLevel: formData.grade_level.trim(),
+          strand: formData.strand.trim(),
+          students: parseInt(formData.students) || 0,
+          description: formData.description?.trim() || '',
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Add response:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to add subject');
+      }
+
+      setSubjects([data.subject, ...subjects]);
+      setIsAddModalVisible(false);
+      setFormData(INITIAL_FORM_DATA);
+      toast.show('Subject added successfully!', { type: 'success' });
+    } catch (error: any) {
+      console.error('Error adding subject:', error);
+      let errorMessage = 'Failed to add subject. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check your internet connection and try again.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      toast.show(errorMessage, { type: 'error' });
+    } finally {
+      setLoading(false);
     }
-    const newSubject: Subject = {
-      id: '#' + (subjects.length + 1),
-      ...formData,
-    };
-    setSubjects([...subjects, newSubject]);
-    setIsAddModalVisible(false);
-    toast.show('Subject added successfully!', { type: 'success', placement: 'top' });
   };
 
-  const handleSubmitEdit = () => {
-    if (!formData.name || !formData.code || !formData.gradeLevel || !formData.strand) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
+  const handleSubmitEdit = async () => {
     if (!selectedSubject) return;
-    const updatedSubjects = subjects.map((subject) =>
-      subject.id === selectedSubject.id
-        ? { ...subject, ...formData }
-        : subject
-    );
-    setSubjects(updatedSubjects);
-    setIsEditModalVisible(false);
-    toast.show('Subject updated successfully!', { type: 'success', placement: 'top' });
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Validate required fields before submission
+      if (!formData.name?.trim() || !formData.code?.trim() || !formData.grade_level?.trim() || !formData.strand?.trim()) {
+        toast.show('Please fill in all required fields', { type: 'error' });
+        return;
+      }
+
+      console.log('Updating subject with data:', formData);
+
+      const response = await fetchWithTimeout(`${API_URL}/subjects/${selectedSubject.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          code: formData.code.trim(),
+          status: formData.status,
+          gradeLevel: formData.grade_level.trim(),
+          strand: formData.strand.trim(),
+          students: parseInt(formData.students) || 0,
+          description: formData.description?.trim() || '',
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Update response:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update subject');
+      }
+
+      // Update the subjects list with the new data
+      setSubjects(prevSubjects => 
+        prevSubjects.map(s => s.id === selectedSubject.id ? {
+          ...data.subject,
+          status: formData.status,
+          grade_level: formData.grade_level,
+          strand: formData.strand,
+          students: parseInt(formData.students) || 0,
+          description: formData.description?.trim() || '',
+        } : s)
+      );
+      
+      setIsEditModalVisible(false);
+      setSelectedSubject(null);
+      toast.show('Subject updated successfully!', { type: 'success' });
+    } catch (error: any) {
+      console.error('Error updating subject:', error);
+      let errorMessage = 'Failed to update subject. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check your internet connection and try again.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      toast.show(errorMessage, { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedSubject) return;
-    const updatedSubjects = subjects.filter(
-      (subject) => subject.id !== selectedSubject.id
-    );
-    setSubjects(updatedSubjects);
-    setIsDeleteModalVisible(false);
-    toast.show('Subject deleted successfully!', { type: 'success', placement: 'top' });
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetchWithTimeout(`${API_URL}/subjects/${selectedSubject.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to delete subject');
+      }
+
+      setSubjects(subjects.filter(s => s.id !== selectedSubject.id));
+      setIsDeleteModalVisible(false);
+      toast.show('Subject deleted successfully!', { type: 'success' });
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete subject');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const SubjectForm = ({ isEdit }: { isEdit: boolean }) => {
-    const [localFormData, setLocalFormData] = useState<FormData>(formData);
+    const [localFormData, setLocalFormData] = useState<FormData>(isEdit ? formData : INITIAL_FORM_DATA);
+    const [formErrors, setFormErrors] = useState<Partial<FormData>>({});
+
+    // Reset form when modal opens
     useEffect(() => {
-      setLocalFormData(formData);
-    }, [formData]);
-    const handleLocalChange = (field: keyof FormData, value: string | number | 'Available' | 'Unavailable' | '') => {
-      setLocalFormData(prev => ({ ...prev, [field]: value }));
-    };
-    const handleSubmit = () => {
-      setFormData(localFormData);
-      if (isEdit) {
-        handleSubmitEdit();
+      if (!isEdit) {
+        setLocalFormData(INITIAL_FORM_DATA);
       } else {
-        handleSubmitAdd();
+        setLocalFormData(formData);
+      }
+      setFormErrors({});
+    }, [isEdit, formData]);
+
+    const handleLocalChange = (field: keyof FormData, value: string) => {
+      console.log('Changing field:', field, 'to value:', value);
+      setLocalFormData(prev => ({ ...prev, [field]: value }));
+      if (formErrors[field]) {
+        setFormErrors(prev => ({ ...prev, [field]: undefined }));
       }
     };
+
+    const validateForm = () => {
+      const errors: Partial<FormData> = {};
+      
+      if (!localFormData.name?.trim()) {
+        errors.name = 'Subject name is required';
+      }
+      if (!localFormData.code?.trim()) {
+        errors.code = 'Subject code is required';
+      }
+      if (!localFormData.grade_level?.trim()) {
+        errors.grade_level = 'Grade level is required';
+      }
+      if (!localFormData.strand?.trim()) {
+        errors.strand = 'Strand is required';
+      }
+
+      setFormErrors(errors);
+      console.log('Form validation errors:', errors);
+      return Object.keys(errors).length === 0;
+    };
+
+    const handleSubmit = () => {
+      if (validateForm()) {
+        const validatedData = {
+          ...localFormData,
+          name: localFormData.name?.trim() || '',
+          code: localFormData.code?.trim() || '',
+          grade_level: localFormData.grade_level?.trim() || '',
+          strand: localFormData.strand?.trim() || '',
+          status: localFormData.status,
+          students: localFormData.students || '0',
+          description: localFormData.description?.trim() || '',
+        };
+        
+        console.log('Submitting form data:', validatedData);
+        setFormData(validatedData);
+        if (isEdit) {
+          handleSubmitEdit();
+        } else {
+          handleSubmitAdd();
+        }
+      } else {
+        Alert.alert('Validation Error', 'Please fill in all required fields correctly');
+      }
+    };
+
     return (
       <View style={styles.formContainer}>
         <View style={styles.formHeader}>
           <Text style={styles.formTitle}>{isEdit ? 'Edit Subject' : 'Add Subject'}</Text>
           <TouchableOpacity
-            onPress={() => isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false)}
+            onPress={() => {
+              setFormErrors({});
+              isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false);
+            }}
           >
             <MaterialIcons name="close" size={24} color="#666" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.inputLabel}>Subject Name</Text>
+
+        <Text style={styles.inputLabel}>Subject Name *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, formErrors.name && styles.inputError]}
           value={localFormData.name}
           onChangeText={(text) => handleLocalChange('name', text)}
           placeholder="Enter subject name"
         />
-        <Text style={styles.inputLabel}>Subject Code</Text>
+        {formErrors.name && <Text style={styles.formErrorText}>{formErrors.name}</Text>}
+
+        <Text style={styles.inputLabel}>Subject Code *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, formErrors.code && styles.inputError]}
           value={localFormData.code}
           onChangeText={(text) => handleLocalChange('code', text)}
           placeholder="Enter subject code"
         />
+        {formErrors.code && <Text style={styles.formErrorText}>{formErrors.code}</Text>}
+
         <Text style={styles.inputLabel}>Status</Text>
-        <View style={styles.pickerContainer}>
+        <View style={[styles.pickerContainer, formErrors.status && styles.inputError]}>
           <Picker
             selectedValue={localFormData.status}
             onValueChange={(value: 'Available' | 'Unavailable') => handleLocalChange('status', value)}
@@ -206,11 +502,12 @@ export default function SubjectManagement() {
             ))}
           </Picker>
         </View>
-        <Text style={styles.inputLabel}>Grade Level</Text>
-        <View style={styles.pickerContainer}>
+
+        <Text style={styles.inputLabel}>Grade Level *</Text>
+        <View style={[styles.pickerContainer, formErrors.grade_level && styles.inputError]}>
           <Picker
-            selectedValue={localFormData.gradeLevel}
-            onValueChange={(value: string) => handleLocalChange('gradeLevel', value)}
+            selectedValue={localFormData.grade_level}
+            onValueChange={(value: string) => handleLocalChange('grade_level', value)}
             style={styles.picker}
           >
             <Picker.Item label="Select Grade Level" value="" />
@@ -219,8 +516,10 @@ export default function SubjectManagement() {
             ))}
           </Picker>
         </View>
-        <Text style={styles.inputLabel}>Strand</Text>
-        <View style={styles.pickerContainer}>
+        {formErrors.grade_level && <Text style={styles.formErrorText}>{formErrors.grade_level}</Text>}
+
+        <Text style={styles.inputLabel}>Strand *</Text>
+        <View style={[styles.pickerContainer, formErrors.strand && styles.inputError]}>
           <Picker
             selectedValue={localFormData.strand}
             onValueChange={(value: string) => handleLocalChange('strand', value)}
@@ -232,14 +531,17 @@ export default function SubjectManagement() {
             ))}
           </Picker>
         </View>
+        {formErrors.strand && <Text style={styles.formErrorText}>{formErrors.strand}</Text>}
+
         <Text style={styles.inputLabel}>Number of Students</Text>
         <TextInput
           style={styles.input}
           value={String(localFormData.students)}
-          onChangeText={(text) => handleLocalChange('students', Number(text))}
+          onChangeText={(text) => handleLocalChange('students', text)}
           placeholder="Enter number of students"
           keyboardType="numeric"
         />
+
         <Text style={styles.inputLabel}>Description</Text>
         <TextInput
           style={[styles.input, { height: 80 }]}
@@ -248,10 +550,14 @@ export default function SubjectManagement() {
           placeholder="Enter description"
           multiline
         />
+
         <View style={styles.formActions}>
           <TouchableOpacity
             style={styles.cancelButton}
-            onPress={() => isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false)}
+            onPress={() => {
+              setFormErrors({});
+              isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false);
+            }}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -279,7 +585,7 @@ export default function SubjectManagement() {
             style={styles.searchInput}
             placeholder="Search subject..."
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearch}
             placeholderTextColor="#666"
           />
         </View>
@@ -293,62 +599,95 @@ export default function SubjectManagement() {
       {/* Title and Add Button */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>Subject Management</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddSubject}>
+        <TouchableOpacity style={styles.addButton} onPress={() => setIsAddModalVisible(true)}>
           <MaterialIcons name="add" size={20} color="#fff" />
           <Text style={styles.addButtonText}>Add Subject</Text>
         </TouchableOpacity>
       </View>
       {/* Subject List */}
-      <ScrollView style={styles.teacherList}>
-        {subjects.map((subject) => (
-          <View key={subject.id} style={styles.teacherCard}>
-            <View style={styles.teacherDetails}>
-              <Text style={styles.teacherName}>{subject.name}</Text>
-              <Text style={{ color: '#888', fontSize: 13 }}>{subject.code}</Text>
-              <View style={[styles.genderBadge, { backgroundColor: subject.status === 'Available' ? '#e0ffe0' : '#ffe0e0' }]}> 
-                <Text style={{ color: subject.status === 'Available' ? '#22bb66' : '#ff4444', fontSize: 12 }}>{subject.status}</Text>
+      {loading && !isRefreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1a73e8" />
+          <Text style={styles.loadingText}>Loading subjects...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={48} color="#ff4444" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              setRetryCount(0);
+              fetchSubjects(true);
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={subjects}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.teacherCard}>
+              <View style={styles.teacherDetails}>
+                <Text style={styles.teacherName}>{item.name || 'Unnamed Subject'}</Text>
+                <Text style={{ color: '#888', fontSize: 13 }}>{item.code || 'No Code'}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                  <Text style={styles.statusText}>{item.status}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Grade Level:</Text>
+                  <Text style={styles.detailValue}>{item.grade_level || 'Not Set'}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Strand:</Text>
+                  <Text style={styles.detailValue}>{item.strand || 'Not Set'}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Students:</Text>
+                  <Text style={styles.detailValue}>{item.students || 0}</Text>
+                </View>
               </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>ID:</Text>
-                <Text style={styles.detailValue}>{subject.id}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Grade Level:</Text>
-                <Text style={styles.detailValue}>{subject.gradeLevel}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Strand:</Text>
-                <Text style={styles.detailValue}>{subject.strand}</Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Students:</Text>
-                <Text style={styles.detailValue}>{subject.students}</Text>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.editButton]}
+                  onPress={() => handleEditSubject(item)}
+                >
+                  <Text style={styles.actionButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDeleteSubject(item)}
+                >
+                  <Text style={styles.actionButtonText}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.actionButton, { backgroundColor: '#e3f2fd', borderWidth: 1, borderColor: '#90caf9' }]}
+                  onPress={() => handleViewSubject(item)}
+                >
+                  <MaterialIcons name="visibility" size={20} color="#1976D2" />
+                  <Text style={{ color: '#1976D2', marginLeft: 6 }}>View</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.editButton]}
-                onPress={() => handleEditSubject(subject)}
-              >
-                <Text style={styles.actionButtonText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => handleDeleteSubject(subject)}
-              >
-                <Text style={styles.actionButtonText}>Delete</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: '#e3f2fd', borderWidth: 1, borderColor: '#90caf9' }]}
-                onPress={() => handleViewSubject(subject)}
-              >
-                <MaterialIcons name="visibility" size={20} color="#1976D2" />
-                <Text style={{ color: '#1976D2', marginLeft: 6 }}>View</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+          )}
+          onRefresh={handleRefresh}
+          refreshing={isRefreshing}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={() => (
+            isLoadingMore ? (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#1a73e8" />
+                <Text style={styles.loadingMoreText}>Loading more subjects...</Text>
+              </View>
+            ) : null
+          )}
+          contentContainerStyle={styles.teacherList}
+        />
+      )}
       {/* Add Subject Modal */}
       <Modal
         visible={isAddModalVisible}
@@ -413,53 +752,68 @@ export default function SubjectManagement() {
                   <MaterialIcons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.teacherName}>{selectedSubject.name}</Text>
-              <View style={[styles.genderBadge, { backgroundColor: selectedSubject.status === 'Available' ? '#e0ffe0' : '#ffe0e0', alignSelf: 'flex-start', marginVertical: 8 }]}> 
-                <Text style={{ color: selectedSubject.status === 'Available' ? '#22bb66' : '#ff4444', fontSize: 12 }}>{selectedSubject.status}</Text>
+
+              <View style={styles.viewDetailsContainer}>
+                <Text style={styles.viewSubjectName}>{selectedSubject.name || 'No Name'}</Text>
+                
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(selectedSubject.status) }]}>
+                  <Text style={styles.statusText}>{selectedSubject.status}</Text>
+                </View>
+
+                <View style={styles.viewDetailRow}>
+                  <View style={styles.viewDetailColumn}>
+                    <Text style={styles.viewDetailLabel}>ID</Text>
+                    <Text style={styles.viewDetailValue}>{selectedSubject.id || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.viewDetailColumn}>
+                    <Text style={styles.viewDetailLabel}>Subject Code</Text>
+                    <Text style={styles.viewDetailValue}>{selectedSubject.code || 'Not Set'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.viewDetailRow}>
+                  <View style={styles.viewDetailColumn}>
+                    <Text style={styles.viewDetailLabel}>Grade Level</Text>
+                    <Text style={styles.viewDetailValue}>{selectedSubject.grade_level || 'Not Set'}</Text>
+                  </View>
+                  <View style={styles.viewDetailColumn}>
+                    <Text style={styles.viewDetailLabel}>Strand</Text>
+                    <Text style={styles.viewDetailValue}>{selectedSubject.strand || 'Not Set'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.viewDetailRow}>
+                  <View style={styles.viewDetailColumn}>
+                    <Text style={styles.viewDetailLabel}>Enrolled Students</Text>
+                    <Text style={styles.viewDetailValue}>{selectedSubject.students || 0} students</Text>
+                  </View>
+                  <View style={styles.viewDetailColumn}>
+                    <Text style={styles.viewDetailLabel}>Status</Text>
+                    <Text style={styles.viewDetailValue}>{selectedSubject.status || 'Not Set'}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.viewDescriptionContainer}>
+                  <Text style={styles.viewDetailLabel}>Description</Text>
+                  <Text style={styles.viewDescriptionText}>
+                    {selectedSubject.description || 'No description available'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.submitButton, { marginTop: 16 }]} 
+                  onPress={() => setIsViewModalVisible(false)}
+                >
+                  <Text style={styles.submitButtonText}>Close</Text>
+                </TouchableOpacity>
               </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <View>
-                  <Text style={styles.detailLabel}>ID</Text>
-                  <Text style={styles.detailValue}>{selectedSubject.id}</Text>
-                </View>
-                <View>
-                  <Text style={styles.detailLabel}>Subject Code</Text>
-                  <Text style={styles.detailValue}>{selectedSubject.code}</Text>
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <View>
-                  <Text style={styles.detailLabel}>Grade Level</Text>
-                  <Text style={styles.detailValue}>{selectedSubject.gradeLevel}</Text>
-                </View>
-                <View>
-                  <Text style={styles.detailLabel}>Strand</Text>
-                  <Text style={styles.detailValue}>{selectedSubject.strand}</Text>
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <View>
-                  <Text style={styles.detailLabel}>Enrolled Students</Text>
-                  <Text style={styles.detailValue}>{selectedSubject.students} students</Text>
-                </View>
-                <View>
-                  <Text style={styles.detailLabel}>Status</Text>
-                  <Text style={styles.detailValue}>{selectedSubject.status}</Text>
-                </View>
-              </View>
-              <View style={{ borderBottomWidth: 1, borderBottomColor: '#eee', marginVertical: 12 }} />
-              <Text style={styles.inputLabel}>Description</Text>
-              <Text style={{ color: '#333', marginBottom: 16 }}>{selectedSubject.description}</Text>
-              <TouchableOpacity style={[styles.submitButton, { marginTop: 8 }]} onPress={() => setIsViewModalVisible(false)}>
-                <Text style={styles.submitButtonText}>Close</Text>
-              </TouchableOpacity>
             </View>
           )}
         </View>
       </Modal>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -550,6 +904,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
+    width: '100%',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -567,6 +922,7 @@ const styles = StyleSheet.create({
   },
   teacherDetails: {
     flex: 1,
+    width: '100%',
   },
   teacherName: {
     fontSize: 16,
@@ -574,12 +930,17 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 6,
   },
-  genderBadge: {
+  statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
     marginBottom: 8,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
   },
   detailRow: {
     flexDirection: 'row',
@@ -602,14 +963,16 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
     paddingTop: 12,
     marginTop: 8,
+    width: '100%',
   },
   actionButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    marginLeft: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   editButton: {
     backgroundColor: '#1a73e8',
@@ -654,26 +1017,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   formTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
   },
   inputLabel: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 16,
+    marginBottom: 12,
+    fontSize: 16,
   },
   pickerContainer: {
     borderWidth: 1,
@@ -765,4 +1127,97 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#fff',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#ff4444',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#1a73e8',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  loadingMoreContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  loadingMoreText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+  },
+  inputError: {
+    borderColor: '#ff4444',
+  },
+  formErrorText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  viewDetailsContainer: {
+    padding: 16,
+  },
+  viewSubjectName: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  viewDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  viewDetailColumn: {
+    flex: 1,
+    marginRight: 16,
+  },
+  viewDetailLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  viewDetailValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  viewDescriptionContainer: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  viewDescriptionText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginTop: 4,
+  },
 });
+
+export default SubjectsScreen;

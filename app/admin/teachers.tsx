@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 28,
     fontSize: 14,
-    color: '#000',
+    color: '#333',
   },
   notificationButton: {
     position: 'relative',
@@ -905,10 +905,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   maleText: {
-    color: '#1a73e8', // Blue color for male
+    color: '#1a73e8',
   },
   femaleText: {
-    color: '#e91e63', // Pink color for female
+    color: '#e91e63',
   },
   detailRow: {
     flexDirection: 'row',
@@ -1126,10 +1126,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 14,
+    marginTop: 10,
+    fontSize: 16,
     color: '#666',
   },
   errorContainer: {
@@ -1139,16 +1140,16 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   retryButton: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#1a73e8',
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#1a73e8',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   retryButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
     marginLeft: 8,
   },
   loadingMoreContainer: {

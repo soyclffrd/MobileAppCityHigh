@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const authRouter = require('./routes/auth');
 const teachersRouter = require('./routes/teachers');
+const subjectsRouter = require('./routes/subjects');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRouter);
 app.use('/api/teachers', teachersRouter);
 app.use('/api/students', require('./routes/students'));
+app.use('/api/subjects', subjectsRouter);
 
 // Add error handling middleware
 app.use((err, req, res, next) => {
