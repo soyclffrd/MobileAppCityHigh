@@ -2,18 +2,19 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from './context/AuthContext';
 
@@ -70,100 +71,111 @@ export default function Register() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.content}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+    <ImageBackground
+      source={require('../assets/images/login-.png')}
+      style={styles.backgroundImage}
+    >
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.content}
         >
-          <View style={styles.formWrapper}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.replace('/login')}
-              accessibilityLabel="Go back to login"
-              accessibilityRole="button"
-            >
-              <MaterialIcons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
-            
-            <Text style={styles.title}>Register</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Name</Text>
-              <TextInput
-                style={[styles.input, errors.name && styles.inputError]}
-                placeholder="Enter your name"
-                value={name}
-                onChangeText={setName}
-                accessibilityLabel="Name input"
-              />
-              {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.formWrapper}>
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={() => router.replace('/login')}
+                accessibilityLabel="Go back to login"
+                accessibilityRole="button"
+              >
+                <MaterialIcons name="arrow-back" size={24} color="#333" />
+              </TouchableOpacity>
+              
+              <Text style={styles.title}>Register</Text>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  style={[styles.input, errors.name && styles.inputError]}
+                  placeholder="Enter your name"
+                  value={name}
+                  onChangeText={setName}
+                  accessibilityLabel="Name input"
+                />
+                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={[styles.input, errors.email && styles.inputError]}
+                  placeholder="Enter your email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  accessibilityLabel="Email input"
+                />
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={[styles.input, errors.password && styles.inputError]}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  accessibilityLabel="Password input"
+                />
+                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <TextInput
+                  style={[styles.input, errors.confirmPassword && styles.inputError]}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  accessibilityLabel="Confirm password input"
+                />
+                {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+              </View>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleRegister}
+                disabled={loading}
+                accessibilityLabel="Register button"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: loading }}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Register</Text>
+                )}
+              </TouchableOpacity>
             </View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                accessibilityLabel="Email input"
-              />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[styles.input, errors.password && styles.inputError]}
-                placeholder="Enter your password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                accessibilityLabel="Password input"
-              />
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-            </View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={[styles.input, errors.confirmPassword && styles.inputError]}
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                accessibilityLabel="Confirm password input"
-              />
-              {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
-            </View>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleRegister}
-              disabled={loading}
-              accessibilityLabel="Register button"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: loading }}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Register</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  backgroundImage: {
+    flex: 1,
+    resizeMode: 'cover',
+    justifyContent: 'center',
+    height: '100%',
+    width: '100%',
   },
   content: {
     flex: 1,
@@ -173,7 +185,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   formWrapper: {
-    backgroundColor: 'rgba(255, 255, 255, 0.97)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: 15,
     padding: 20,
     boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',

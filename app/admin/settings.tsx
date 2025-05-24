@@ -1,45 +1,20 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 
 export default function SettingsScreen() {
-  const { logout } = useAuth();
-  const router = useRouter();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/login');
-          },
-        },
-      ]
-    );
-  };
 
   const SettingItem = ({ 
     icon, 
@@ -140,11 +115,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <MaterialIcons name="logout" size={24} color="#FF3B30" />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -189,28 +159,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingTitle: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 15,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    margin: 20,
-    padding: 15,
-    borderRadius: 8,
     ...Platform.select({
       web: {
         boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
@@ -223,10 +171,17 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  logoutText: {
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingTitle: {
     fontSize: 16,
-    color: '#FF3B30',
-    marginLeft: 10,
+    color: '#333',
+    marginLeft: 15,
   },
 }); 

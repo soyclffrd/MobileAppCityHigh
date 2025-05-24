@@ -3,17 +3,18 @@ import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -568,10 +569,23 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   actionButton: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
-    marginLeft: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+      default: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   editButton: {
     backgroundColor: '#1a73e8',
@@ -586,9 +600,9 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
-    padding: 20,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   formContainer: {
     backgroundColor: '#fff',
@@ -676,7 +690,23 @@ const styles = StyleSheet.create({
   deleteConfirmation: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      default: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   deleteTitle: {
     fontSize: 18,

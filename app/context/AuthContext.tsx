@@ -64,9 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      // Remove user data from AsyncStorage
-      await AsyncStorage.removeItem('user');
+      // Clear all stored user data
+      await AsyncStorage.clear();
+      // Reset user state
       setUser(null);
+      // Reset loading state
+      setIsLoading(false);
     } catch (error) {
       console.error('Logout error:', error);
       throw error;

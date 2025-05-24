@@ -1,9 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
-  Picker,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -11,7 +12,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -158,7 +159,7 @@ export default function SubjectManagement() {
     useEffect(() => {
       setLocalFormData(formData);
     }, [formData]);
-    const handleLocalChange = (field: keyof FormData, value: string | number) => {
+    const handleLocalChange = (field: keyof FormData, value: string | number | 'Available' | 'Unavailable' | '') => {
       setLocalFormData(prev => ({ ...prev, [field]: value }));
     };
     const handleSubmit = () => {
@@ -197,7 +198,7 @@ export default function SubjectManagement() {
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={localFormData.status}
-            onValueChange={(value) => handleLocalChange('status', value)}
+            onValueChange={(value: 'Available' | 'Unavailable') => handleLocalChange('status', value)}
             style={styles.picker}
           >
             {statuses.map((status) => (
@@ -209,7 +210,7 @@ export default function SubjectManagement() {
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={localFormData.gradeLevel}
-            onValueChange={(value) => handleLocalChange('gradeLevel', value)}
+            onValueChange={(value: string) => handleLocalChange('gradeLevel', value)}
             style={styles.picker}
           >
             <Picker.Item label="Select Grade Level" value="" />
@@ -222,7 +223,7 @@ export default function SubjectManagement() {
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={localFormData.strand}
-            onValueChange={(value) => handleLocalChange('strand', value)}
+            onValueChange={(value: string) => handleLocalChange('strand', value)}
             style={styles.picker}
           >
             <Picker.Item label="Select Strand" value="" />
@@ -597,7 +598,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   actionButton: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     marginLeft: 12,
@@ -624,8 +625,23 @@ const styles = StyleSheet.create({
   formContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
-    maxHeight: '90%',
+    padding: 24,
+    width: '90%',
+    maxWidth: 500,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   formHeader: {
     flexDirection: 'row',
@@ -689,7 +705,23 @@ const styles = StyleSheet.create({
   deleteConfirmation: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   deleteTitle: {
     fontSize: 18,

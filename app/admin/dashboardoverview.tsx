@@ -28,7 +28,6 @@ export default function DashboardOverview() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.welcomeText}>Hello,</Text>
@@ -42,7 +41,6 @@ export default function DashboardOverview() {
         </TouchableOpacity>
       </View>
 
-      {/* Stats Section */}
       <View style={styles.statsContainer}>
         {stats.map((stat, index) => (
           <View key={index} style={styles.statCard}>
@@ -55,7 +53,6 @@ export default function DashboardOverview() {
         ))}
       </View>
 
-      {/* Quick Actions Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsContainer}>
@@ -70,7 +67,6 @@ export default function DashboardOverview() {
         </View>
       </View>
 
-      {/* Recent Activity Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
         <View style={styles.activityContainer}>
@@ -142,21 +138,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 10,
-    justifyContent: 'space-between',
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
   statCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    marginRight: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   statIcon: {
     width: 40,
@@ -196,7 +204,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      }
+    }),
   },
   actionIcon: {
     width: 40,
@@ -248,11 +269,10 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     fontSize: 16,
-    color: '#333',
-    marginBottom: 4,
+    fontWeight: 'bold',
   },
   activityTime: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
   },
 }); 
