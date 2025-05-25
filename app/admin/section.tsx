@@ -158,27 +158,28 @@ export default function SectionManagement() {
       {/* Header with Search */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
-          <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search section..."
+            placeholder="Search sections..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="#666"
           />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
           <MaterialIcons name="notifications" size={24} color="#fff" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationText}>2</Text>
+            <Text style={styles.notificationBadgeText}>3</Text>
           </View>
         </TouchableOpacity>
       </View>
       {/* Title and Add Button */}
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Section Management</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddSection}>
-          <MaterialIcons name="add" size={20} color="#fff" />
+        <Text style={styles.title}>Sections</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleAddSection}
+        >
+          <MaterialIcons name="add" size={24} color="#fff" />
           <Text style={styles.addButtonText}>Add Section</Text>
         </TouchableOpacity>
       </View>
@@ -265,87 +266,85 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#1a73e8',
-    padding: 8,
-    paddingTop: (StatusBar.currentHeight || 0) + 8,
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 6,
-    padding: 6,
-    marginRight: 8,
-  },
-  searchIcon: {
-    marginRight: 6,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    height: 28,
-    fontSize: 14,
-    color: '#000',
+    height: 40,
+    fontSize: 16,
+    color: '#333',
   },
   notificationButton: {
+    padding: 8,
     position: 'relative',
-    padding: 6,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff4444',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  notificationText: {
+  notificationBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#333',
-    flex: 1,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1976D2',
-    paddingHorizontal: 12,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    minWidth: 100,
-    justifyContent: 'center',
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     marginLeft: 8,
   },
   teacherList: {
-    padding: 12,
+    padding: 16,
   },
   teacherCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    padding: 16,
+    marginBottom: 16,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -380,10 +379,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   teacherName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   detailRow: {
     flexDirection: 'row',
@@ -391,12 +390,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     width: 80,
-    fontSize: 13,
+    fontSize: 14,
     color: '#666',
   },
   detailValue: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: '#333',
   },
   actionButtons: {
@@ -404,14 +403,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     borderTopWidth: 1,
     borderTopColor: '#eee',
-    paddingTop: 12,
-    marginTop: 8,
+    paddingTop: 16,
+    marginTop: 12,
   },
   actionButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginLeft: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 12,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -419,12 +418,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a73e8',
   },
   deleteButton: {
-    backgroundColor: '#ff4444',
+    backgroundColor: '#FF3B30',
   },
   actionButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,
@@ -458,7 +457,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   formTitle: {
     fontSize: 20,
@@ -475,23 +474,14 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
+    fontSize: 16,
     color: '#333',
     marginBottom: 16,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  picker: {
-    height: 50,
   },
   formActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 20,
+    marginTop: 24,
   },
   cancelButton: {
     marginRight: 12,
@@ -535,16 +525,16 @@ const styles = StyleSheet.create({
     }),
   },
   deleteTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: 16,
     textAlign: 'center',
   },
   deleteMessage: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
   },
   deleteActions: {
@@ -553,7 +543,7 @@ const styles = StyleSheet.create({
   },
   deleteAction: {
     padding: 12,
-    minWidth: 100,
+    minWidth: 120,
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: 8,
@@ -562,7 +552,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   confirmDelete: {
-    backgroundColor: '#ff4444',
+    backgroundColor: '#FF3B30',
   },
   deleteActionText: {
     fontSize: 16,

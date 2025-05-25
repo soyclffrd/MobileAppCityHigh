@@ -4,6 +4,8 @@ const path = require('path');
 const authRouter = require('./routes/auth');
 const teachersRouter = require('./routes/teachers');
 const subjectsRouter = require('./routes/subjects');
+const strandsRouter = require('./routes/strands');
+const gradeLevelsRouter = require('./routes/grade-levels');
 
 const app = express();
 
@@ -31,6 +33,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/teachers', teachersRouter);
 app.use('/api/students', require('./routes/students'));
 app.use('/api/subjects', subjectsRouter);
+app.use('/api/strands', strandsRouter);
+app.use('/api/grade-levels', gradeLevelsRouter);
 
 // Add error handling middleware
 app.use((err, req, res, next) => {

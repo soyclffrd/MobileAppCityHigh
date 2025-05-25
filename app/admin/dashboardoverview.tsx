@@ -1,11 +1,18 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardOverview() {
   const { user, login, updateUser, setUser } = useAuth();
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    // Add your search logic here
+  };
 
   const stats = [
     { title: 'Total Teachers', value: '24', icon: 'school', color: '#4CAF50' },
@@ -27,22 +34,26 @@ export default function DashboardOverview() {
   ];
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.searchContainer}>
-          <MaterialIcons name="search" size={24} style={styles.searchIcon} />
-          <TextInput style={styles.searchInput} placeholder="Search" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search dashboard..."
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
-          <MaterialIcons name="notifications" size={24} color="#fff" />
+          <MaterialIcons name="notifications" size={24} color="#333" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationText}>3</Text>
+            <Text style={styles.notificationBadgeText}>3</Text>
           </View>
         </TouchableOpacity>
       </View>
 
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Hello, {user?.name || 'Admin'}</Text>
+        <Text style={styles.title}>Dashboard Overview</Text>
       </View>
 
       <View style={styles.statsContainer}>
@@ -87,7 +98,7 @@ export default function DashboardOverview() {
           ))}
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -99,59 +110,61 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#1a73e8',
-    padding: 8,
-    paddingTop: (StatusBar.currentHeight || 0) + 8,
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 6,
-    padding: 6,
-    marginRight: 8,
-  },
-  searchIcon: {
-    marginRight: 6,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    height: 28,
-    fontSize: 14,
-    color: '#000',
+    height: 40,
+    fontSize: 16,
+    color: '#333',
   },
   notificationButton: {
+    padding: 8,
     position: 'relative',
-    padding: 6,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff4444',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  notificationText: {
+  notificationBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#e0e0e0',
   },
   title: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#333',
   },
   statsContainer: {

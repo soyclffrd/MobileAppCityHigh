@@ -2,17 +2,17 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import React, { useState } from 'react';
 import {
-    Alert,
+    FlatList,
     Modal,
     Platform,
+    RefreshControl,
     SafeAreaView,
-    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -36,7 +36,7 @@ export default function UserManagement() {
     { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'User' },
     { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'User' },
   ]);
-
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const toast = useToast();
 
   // Modal states
@@ -53,6 +53,14 @@ export default function UserManagement() {
   });
 
   const roles = ['Admin', 'Student', 'Teacher'];
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // Simulate refresh delay
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
+  };
 
   const handleAddUser = () => {
     setFormData({ name: '', email: '', role: '' });
@@ -72,7 +80,7 @@ export default function UserManagement() {
 
   const handleSubmitAdd = () => {
     if (!formData.name || !formData.email || !formData.role) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      toast.show('Please fill in all required fields', { type: 'error' });
       return;
     }
     const newUser: User = {
@@ -81,12 +89,12 @@ export default function UserManagement() {
     };
     setUsers([...users, newUser]);
     setIsAddModalVisible(false);
-    toast.show('User added successfully!', { type: 'success', placement: 'top' });
+    toast.show('User added successfully!', { type: 'success' });
   };
 
   const handleSubmitEdit = () => {
     if (!formData.name || !formData.email || !formData.role) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      toast.show('Please fill in all required fields', { type: 'error' });
       return;
     }
     if (!selectedUser) return;
@@ -95,7 +103,7 @@ export default function UserManagement() {
     );
     setUsers(updatedUsers);
     setIsEditModalVisible(false);
-    toast.show('User updated successfully!', { type: 'success', placement: 'top' });
+    toast.show('User updated successfully!', { type: 'success' });
   };
 
   const handleConfirmDelete = () => {
@@ -103,8 +111,17 @@ export default function UserManagement() {
     const updatedUsers = users.filter((user) => user.id !== selectedUser.id);
     setUsers(updatedUsers);
     setIsDeleteModalVisible(false);
-    toast.show('User deleted successfully!', { type: 'success', placement: 'top' });
+    toast.show('User deleted successfully!', { type: 'success' });
   };
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+  };
+
+  const filteredUsers = users.filter((user) =>
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const UserForm = ({ isEdit }: { isEdit: boolean }) => {
     const [localFormData, setLocalFormData] = useState<FormData>(formData);
@@ -179,79 +196,86 @@ export default function UserManagement() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      {/* Header with Search */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
-          <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search user..."
+            placeholder="Search users..."
             value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#666"
+            onChangeText={handleSearch}
           />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
-          <MaterialIcons name="notifications" size={24} color="#fff" />
+          <MaterialIcons name="notifications" size={24} color="#333" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationText}>2</Text>
+            <Text style={styles.notificationBadgeText}>2</Text>
           </View>
         </TouchableOpacity>
       </View>
-      {/* Title and Add Button */}
+
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>User Management</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddUser}>
-          <MaterialIcons name="add" size={20} color="#fff" />
+        <Text style={styles.title}>Users</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleAddUser}
+        >
+          <MaterialIcons name="add" size={24} color="#fff" />
           <Text style={styles.addButtonText}>Add User</Text>
         </TouchableOpacity>
       </View>
-      {/* User List */}
-      <ScrollView style={styles.teacherList}>
-        {users
-          .filter((user) =>
-            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-          .map((user) => (
-            <View key={user.id} style={styles.teacherCard}>
-              <View style={styles.teacherInfo}>
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <MaterialIcons name="person" size={30} color="#666" />
-                </View>
-                <View style={styles.teacherDetails}>
-                  <Text style={styles.teacherName}>{user.name}</Text>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>ID:</Text>
-                    <Text style={styles.detailValue}>{user.id}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Email:</Text>
-                    <Text style={styles.detailValue}>{user.email}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Role:</Text>
-                    <Text style={styles.detailValue}>{user.role}</Text>
-                  </View>
-                </View>
+
+      <FlatList
+        style={styles.teacherList}
+        data={filteredUsers}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item: user }) => (
+          <View style={styles.teacherCard}>
+            <View style={styles.teacherInfo}>
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <MaterialIcons name="person" size={30} color="#666" />
               </View>
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.editButton]}
-                  onPress={() => handleEditUser(user)}
-                >
-                  <Text style={styles.actionButtonText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.deleteButton]}
-                  onPress={() => handleDeleteUser(user)}
-                >
-                  <Text style={styles.actionButtonText}>Delete</Text>
-                </TouchableOpacity>
+              <View style={styles.teacherDetails}>
+                <Text style={styles.teacherName}>{user.name}</Text>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>ID:</Text>
+                  <Text style={styles.detailValue}>{user.id}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Email:</Text>
+                  <Text style={styles.detailValue}>{user.email}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Role:</Text>
+                  <Text style={styles.detailValue}>{user.role}</Text>
+                </View>
               </View>
             </View>
-          ))}
-      </ScrollView>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.editButton]}
+                onPress={() => handleEditUser(user)}
+              >
+                <Text style={styles.actionButtonText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => handleDeleteUser(user)}
+              >
+                <Text style={styles.actionButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#1a73e8']}
+            tintColor="#1a73e8"
+          />
+        }
+      />
+
       <Modal visible={isAddModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <UserForm isEdit={false} />
@@ -298,77 +322,75 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#1a73e8',
-    padding: 8,
-    paddingTop: (StatusBar.currentHeight || 0) + 8,
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 6,
-    padding: 6,
-    marginRight: 8,
-  },
-  searchIcon: {
-    marginRight: 6,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    height: 28,
-    fontSize: 14,
-    color: '#000',
+    height: 40,
+    fontSize: 16,
+    color: '#333',
   },
   notificationButton: {
+    padding: 8,
     position: 'relative',
-    padding: 6,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff4444',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  notificationText: {
+  notificationBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#333',
-    flex: 1,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1976D2',
-    paddingHorizontal: 12,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    minWidth: 100,
-    justifyContent: 'center',
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     marginLeft: 8,
   },
   teacherList: {
@@ -511,6 +533,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     marginBottom: 16,
+  },
+  inputError: {
+    borderColor: '#ff4444',
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: -12,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   pickerContainer: {
     borderWidth: 1,

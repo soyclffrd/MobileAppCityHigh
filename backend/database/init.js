@@ -26,6 +26,13 @@ async function initializeDatabase() {
     );
     await connection.query(subjectsSql);
 
+    // Read and execute strands.sql
+    const strandsSql = await fs.readFile(
+      path.join(__dirname, 'strands.sql'),
+      'utf8'
+    );
+    await connection.query(strandsSql);
+
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);

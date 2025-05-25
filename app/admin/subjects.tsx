@@ -7,8 +7,6 @@ import {
   FlatList,
   Modal,
   Platform,
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -575,35 +573,35 @@ const SubjectsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      {/* Header with Search */}
+    <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.searchContainer}>
-          <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search subject..."
+            placeholder="Search subjects..."
             value={searchQuery}
             onChangeText={handleSearch}
-            placeholderTextColor="#666"
           />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
-          <MaterialIcons name="notifications" size={24} color="#fff" />
+          <MaterialIcons name="notifications" size={24} color="#333" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationText}>2</Text>
+            <Text style={styles.notificationBadgeText}>3</Text>
           </View>
         </TouchableOpacity>
       </View>
-      {/* Title and Add Button */}
+
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>Subject Management</Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => setIsAddModalVisible(true)}>
-          <MaterialIcons name="add" size={20} color="#fff" />
+        <Text style={styles.title}>Subjects</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => setIsAddModalVisible(true)}
+        >
+          <MaterialIcons name="add" size={24} color="#fff" />
           <Text style={styles.addButtonText}>Add Subject</Text>
         </TouchableOpacity>
       </View>
+
       {/* Subject List */}
       {loading && !isRefreshing ? (
         <View style={styles.loadingContainer}>
@@ -811,7 +809,7 @@ const SubjectsScreen = () => {
           )}
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -823,77 +821,75 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#1a73e8',
-    padding: 8,
-    paddingTop: (StatusBar.currentHeight || 0) + 8,
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 6,
-    padding: 6,
-    marginRight: 8,
-  },
-  searchIcon: {
-    marginRight: 6,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    height: 28,
-    fontSize: 14,
-    color: '#000',
+    height: 40,
+    fontSize: 16,
+    color: '#333',
   },
   notificationButton: {
+    padding: 8,
     position: 'relative',
-    padding: 6,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff4444',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  notificationText: {
+  notificationBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#333',
-    flex: 1,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1976D2',
-    paddingHorizontal: 12,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    minWidth: 100,
-    justifyContent: 'center',
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     marginLeft: 8,
   },
   teacherList: {
