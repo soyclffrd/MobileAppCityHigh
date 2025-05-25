@@ -8,18 +8,50 @@ const pool = mysql.createPool({
   database: 'school_app',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  supportBigNumbers: true,
+  dateStrings: true
 });
 
 // Test the connection and database
 async function testConnection() {
+  let connection;
   try {
-    const connection = await pool.getConnection();
-    console.log('Database connected successfully');
+    connection = await pool.getConnection();
+    console.log('Connected to MySQL server');
+
+    // Test the grade_levels table
+    const [tables] = await connection.query('SHOW TABLES LIKE "grade_levels"');
+    if (tables.length === 0) {
+      console.log('grade_levels table does not exist');
+      return;
+    }
+
+    // Check table structure
+    const [columns] = await connection.query('SHOW COLUMNS FROM grade_levels');
+    console.log('Table structure:', columns);
+
+    // Check AUTO_INCREMENT value
+    const [autoIncrement] = await connection.query(`
+      SELECT AUTO_INCREMENT 
+      FROM information_schema.TABLES 
+      WHERE TABLE_SCHEMA = 'school_app' 
+      AND TABLE_NAME = 'grade_levels'
+    `);
+    console.log('AUTO_INCREMENT value:', autoIncrement[0]);
+
+    // Reset AUTO_INCREMENT if needed
+    if (autoIncrement[0].AUTO_INCREMENT === null) {
+      console.log('Resetting AUTO_INCREMENT...');
+      await connection.query('ALTER TABLE grade_levels AUTO_INCREMENT = 1');
+      console.log('AUTO_INCREMENT reset successfully');
+    }
 
     // Test if subjects table exists
-    const [tables] = await connection.query('SHOW TABLES LIKE "subjects"');
-    if (tables.length === 0) {
+    const [subjectsTable] = await connection.query('SHOW TABLES LIKE "subjects"');
+    if (subjectsTable.length === 0) {
       console.log('Subjects table does not exist. Running initialization...');
       // You might want to run the initialization script here
     } else {
@@ -27,29 +59,28 @@ async function testConnection() {
     }
 
     // Test if strands table exists
-    const [strandTables] = await connection.query('SHOW TABLES LIKE "strands"');
-    if (strandTables.length === 0) {
+    const [strandsTable] = await connection.query('SHOW TABLES LIKE "strands"');
+    if (strandsTable.length === 0) {
       console.log('Strands table does not exist. Running initialization...');
       // You might want to run the initialization script here
     } else {
       console.log('Strands table exists');
     }
 
-    connection.release();
-  } catch (err) {
-    console.error('Error connecting to the database:', err);
-    if (err.code === 'ER_BAD_DB_ERROR') {
-      console.error('Database "school_app" does not exist. Please run the initialization script first.');
-    } else if (err.code === 'ECONNREFUSED') {
-      console.error('Could not connect to MySQL server. Please make sure MySQL is running.');
-    } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
-      console.error('Access denied. Please check your MySQL username and password.');
+    // Test if we can query the grade_levels table
+    const [gradeLevels] = await connection.query('SELECT COUNT(*) as count FROM grade_levels');
+    console.log('Number of grade levels in database:', gradeLevels[0].count);
+
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+  } finally {
+    if (connection) {
+      connection.release();
     }
-    throw err;
   }
 }
 
 // Run the connection test
-testConnection().catch(console.error);
+testConnection();
 
 module.exports = pool; 

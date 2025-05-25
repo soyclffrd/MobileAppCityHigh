@@ -16,7 +16,7 @@ import {
 import { useToast } from 'react-native-toast-notifications';
 
 interface GradeLevel {
-  id: number;
+  id: string;
   name: string;
   description: string;
   is_active: boolean;
@@ -30,11 +30,17 @@ interface FormData {
   is_active: boolean;
 }
 
-// Use original Node.js backend URL
+const INITIAL_FORM_DATA: FormData = {
+  name: '',
+  description: '',
+  is_active: true,
+};
+
 const API_URL = 'http://192.168.0.102:3001/api';
+const DEBOUNCE_DELAY = 1000; // 1 second delay
 const ITEMS_PER_PAGE = 10;
 const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000;
+const RETRY_DELAY = 2000; // 2 seconds
 
 // Add timeout configuration
 const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 30000) => {
@@ -47,17 +53,10 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 300
       signal: controller.signal,
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        'Content-Type': (options.headers as Record<string, string>)?.['Content-Type'] || 'application/json',
       },
     });
-
     clearTimeout(id);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || `HTTP error! status: ${response.status}`);
-    }
-    
     return response;
   } catch (error: unknown) {
     clearTimeout(id);
@@ -66,12 +65,6 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 300
     }
     throw error;
   }
-};
-
-const INITIAL_FORM_DATA: FormData = {
-  name: '',
-  description: '',
-  is_active: true,
 };
 
 export default function GradeLevelManagement() {
@@ -95,6 +88,19 @@ export default function GradeLevelManagement() {
   // Form states
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        setPage(1);
+        setGradeLevels([]);
+        fetchGradeLevels(true);
+      }
+    }, DEBOUNCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Initial fetch
   useEffect(() => {
     fetchGradeLevels(true);
@@ -102,58 +108,68 @@ export default function GradeLevelManagement() {
 
   const fetchGradeLevels = async (isRefresh = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (isRefresh) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const currentPage = isRefresh ? 1 : page;
       
-      const pageNum = isRefresh ? 1 : page;
-      const url = `${API_URL}/grade-levels?page=${pageNum}&limit=${ITEMS_PER_PAGE}`;
-      console.log('Fetching grade levels from:', url);
-      
-      const response = await fetchWithTimeout(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+      console.log('Fetching grade levels:', {
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        search: searchQuery
       });
+
+      const response = await fetchWithTimeout(
+        `${API_URL}/grade-levels?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorText
-        });
-        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error(`Expected JSON response but got ${contentType}`);
-      }
-
-      const data = await response.json();
-      console.log('Server response:', data);
       
-      if (!data.success) {
-        throw new Error(data.message || 'Server returned unsuccessful response');
+      const data = await response.json();
+      console.log('Fetched grade levels:', data);
+      
+      if (data.success) {
+        if (isRefresh) {
+          setGradeLevels(data.data || []);
+        } else {
+          setGradeLevels(prev => [...prev, ...(data.data || [])]);
+        }
+        setHasMore((data.data || []).length === ITEMS_PER_PAGE);
+        setRetryCount(0);
+        if (!isRefresh) {
+          setPage(prev => prev + 1);
+        }
+      } else {
+        throw new Error(data.message || 'Failed to fetch grade levels');
       }
-
-      if (!data.gradeLevels || !Array.isArray(data.gradeLevels)) {
-        console.error('Invalid response format:', data);
-        throw new Error('Server returned invalid data format');
+    } catch (error: any) {
+      console.error('Error fetching grade levels:', error);
+      let errorMessage = 'Could not connect to server. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check if the server is running and your internet connection is stable.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
       }
-
-      setGradeLevels(isRefresh ? data.gradeLevels : [...gradeLevels, ...data.gradeLevels]);
-      setHasMore(data.gradeLevels.length === ITEMS_PER_PAGE);
-      setPage(pageNum);
-      setRetryCount(0);
-    } catch (error) {
-      console.error('Error in fetchGradeLevels:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch grade levels');
+      
+      setError(errorMessage);
       
       if (retryCount < MAX_RETRIES) {
-        console.log(`Retrying... Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
           fetchGradeLevels(isRefresh);
@@ -161,20 +177,20 @@ export default function GradeLevelManagement() {
       }
     } finally {
       setLoading(false);
-      setIsRefreshing(false);
       setIsLoadingMore(false);
+      setIsRefreshing(false);
     }
   };
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    setPage(1);
     fetchGradeLevels(true);
   };
 
   const handleLoadMore = () => {
-    if (!loading && hasMore && !isLoadingMore) {
-      setIsLoadingMore(true);
-      fetchGradeLevels(false);
+    if (!isLoadingMore && hasMore) {
+      fetchGradeLevels();
     }
   };
 
@@ -198,15 +214,10 @@ export default function GradeLevelManagement() {
     setIsDeleteModalVisible(true);
   };
 
-  const handleSubmitAdd = async (formData: FormData) => {
+  const handleSubmitAdd = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      if (!formData.name?.trim()) {
-        toast.show('Please fill in all required fields', { type: 'error' });
-        return;
-      }
 
       console.log('Adding new grade level with data:', formData);
 
@@ -217,29 +228,22 @@ export default function GradeLevelManagement() {
         },
         body: JSON.stringify({
           name: formData.name.trim(),
-          description: formData.description.trim(),
+          description: formData.description?.trim() || '',
           is_active: formData.is_active,
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to add grade level');
-      }
-
       const data = await response.json();
       console.log('Add response:', data);
 
-      if (!data.success) {
+      if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to add grade level');
       }
 
-      setGradeLevels(prev => [data.gradeLevel, ...prev]);
+      setGradeLevels([data.data, ...gradeLevels]);
       setIsAddModalVisible(false);
       setFormData(INITIAL_FORM_DATA);
       toast.show('Grade Level added successfully!', { type: 'success' });
-
-      fetchGradeLevels(true);
     } catch (error: any) {
       console.error('Error adding grade level:', error);
       let errorMessage = 'Failed to add grade level. ';
@@ -258,13 +262,14 @@ export default function GradeLevelManagement() {
     }
   };
 
-  const handleSubmitEdit = async (formData: FormData) => {
+  const handleSubmitEdit = async () => {
     if (!selectedGrade) return;
 
     try {
       setLoading(true);
       setError(null);
 
+      // Validate required fields before submission
       if (!formData.name?.trim()) {
         toast.show('Please fill in all required fields', { type: 'error' });
         return;
@@ -279,7 +284,7 @@ export default function GradeLevelManagement() {
         },
         body: JSON.stringify({
           name: formData.name.trim(),
-          description: formData.description.trim(),
+          description: formData.description?.trim() || '',
           is_active: formData.is_active,
         }),
       });
@@ -291,15 +296,13 @@ export default function GradeLevelManagement() {
         throw new Error(data.message || 'Failed to update grade level');
       }
 
-      setGradeLevels(prev => prev.map(grade => 
-        grade.id === selectedGrade.id ? data.gradeLevel : grade
+      setGradeLevels(gradeLevels.map(grade => 
+        grade.id === selectedGrade.id ? data.data : grade
       ));
-      setIsEditModalVisible(false);
+    setIsEditModalVisible(false);
       setSelectedGrade(null);
       setFormData(INITIAL_FORM_DATA);
       toast.show('Grade Level updated successfully!', { type: 'success' });
-
-      fetchGradeLevels(true);
     } catch (error: any) {
       console.error('Error updating grade level:', error);
       let errorMessage = 'Failed to update grade level. ';
@@ -339,20 +342,18 @@ export default function GradeLevelManagement() {
       }
 
       setGradeLevels(gradeLevels.filter(g => g.id !== selectedGrade.id));
-      setIsDeleteModalVisible(false);
+    setIsDeleteModalVisible(false);
       toast.show('Grade Level deleted successfully!', { type: 'success' });
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error deleting grade level:', error);
       let errorMessage = 'Failed to delete grade level. ';
       
       if (error instanceof TypeError && error.message === 'Network request failed') {
         errorMessage += 'Please check your internet connection and try again.';
-      } else if (error instanceof Error && error.name === 'AbortError') {
+      } else if (error.name === 'AbortError') {
         errorMessage += 'Request timed out. Please try again.';
-      } else if (error instanceof Error) {
-        errorMessage += error.message || 'An unexpected error occurred.';
       } else {
-        errorMessage += 'An unexpected error occurred.';
+        errorMessage += error.message || 'An unexpected error occurred.';
       }
       
       toast.show(errorMessage, { type: 'error' });
@@ -361,17 +362,11 @@ export default function GradeLevelManagement() {
     }
   };
 
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-    setPage(1);
-    setGradeLevels([]);
-    fetchGradeLevels(true);
-  };
-
   const GradeForm = ({ isEdit }: { isEdit: boolean }) => {
     const [localFormData, setLocalFormData] = useState<FormData>(isEdit ? formData : INITIAL_FORM_DATA);
     const [formErrors, setFormErrors] = useState<Partial<FormData>>({});
 
+    // Reset form when modal opens
     useEffect(() => {
       if (!isEdit) {
         setLocalFormData(INITIAL_FORM_DATA);
@@ -402,10 +397,9 @@ export default function GradeLevelManagement() {
     };
 
     const handleSubmit = async () => {
-      console.log('Current form data:', localFormData);
-      
       if (validateForm()) {
         const validatedData = {
+          ...localFormData,
           name: localFormData.name?.trim() || '',
           description: localFormData.description?.trim() || '',
           is_active: localFormData.is_active,
@@ -414,14 +408,67 @@ export default function GradeLevelManagement() {
         console.log('Submitting form data:', validatedData);
         
         try {
-          if (isEdit) {
-            await handleSubmitEdit(validatedData);
+          setLoading(true);
+          if (isEdit && selectedGrade) {
+            // Handle edit
+            const response = await fetchWithTimeout(`${API_URL}/grade-levels/${selectedGrade.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(validatedData),
+            });
+
+            const data = await response.json();
+            console.log('Update response:', data);
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to update grade level');
+            }
+
+            setGradeLevels(prev => prev.map(grade => 
+              grade.id === selectedGrade.id ? data.data : grade
+            ));
+            setIsEditModalVisible(false);
+            setSelectedGrade(null);
+            toast.show('Grade Level updated successfully!', { type: 'success' });
           } else {
-            await handleSubmitAdd(validatedData);
+            // Handle add
+            const response = await fetchWithTimeout(`${API_URL}/grade-levels`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(validatedData),
+            });
+
+            const data = await response.json();
+            console.log('Add response:', data);
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to add grade level');
+            }
+
+            setGradeLevels(prev => [data.data, ...prev]);
+            setIsAddModalVisible(false);
+            toast.show('Grade Level added successfully!', { type: 'success' });
           }
-        } catch (error) {
-          console.error('Error submitting form:', error);
-          toast.show('Failed to submit form. Please try again.', { type: 'error' });
+          setFormData(INITIAL_FORM_DATA);
+        } catch (error: any) {
+          console.error('Error submitting grade level:', error);
+          let errorMessage = `Failed to ${isEdit ? 'update' : 'add'} grade level. `;
+          
+          if (error instanceof TypeError && error.message === 'Network request failed') {
+            errorMessage += 'Please check your internet connection and try again.';
+          } else if (error.name === 'AbortError') {
+            errorMessage += 'Request timed out. Please try again.';
+          } else {
+            errorMessage += error.message || 'An unexpected error occurred.';
+          }
+          
+          toast.show(errorMessage, { type: 'error' });
+        } finally {
+          setLoading(false);
         }
       } else {
         toast.show('Please fill in all required fields correctly', { type: 'error' });
@@ -442,22 +489,23 @@ export default function GradeLevelManagement() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.inputLabel}>Grade Level Name *</Text>
+        <Text style={styles.inputLabel}>Name *</Text>
         <TextInput
           style={[styles.input, formErrors.name && styles.inputError]}
           value={localFormData.name}
           onChangeText={(text) => handleLocalChange('name', text)}
           placeholder="Enter grade level name"
         />
-        {formErrors.name && <Text style={styles.formErrorText}>{formErrors.name}</Text>}
+        {formErrors.name && <Text style={styles.errorText}>{formErrors.name}</Text>}
 
         <Text style={styles.inputLabel}>Description</Text>
         <TextInput
-          style={[styles.input, { height: 80 }]}
+          style={styles.input}
           value={localFormData.description}
           onChangeText={(text) => handleLocalChange('description', text)}
           placeholder="Enter description"
           multiline
+          numberOfLines={3}
         />
 
         <View style={styles.formActions}>
@@ -470,12 +518,13 @@ export default function GradeLevelManagement() {
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.submitButton}
+          <TouchableOpacity 
+            style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
             onPress={handleSubmit}
+            disabled={loading}
           >
             <Text style={styles.submitButtonText}>
-              {isEdit ? 'Update Grade Level' : 'Add Grade Level'}
+              {loading ? 'Adding...' : isEdit ? 'Update' : 'Add'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -486,14 +535,13 @@ export default function GradeLevelManagement() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      {/* Header with Search */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
             placeholder="Search grade levels..."
             value={searchQuery}
-            onChangeText={handleSearch}
+            onChangeText={setSearchQuery}
           />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
@@ -504,7 +552,6 @@ export default function GradeLevelManagement() {
         </TouchableOpacity>
       </View>
 
-      {/* Title and Add Button */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>Grade Levels</Text>
         <TouchableOpacity 
@@ -516,8 +563,7 @@ export default function GradeLevelManagement() {
         </TouchableOpacity>
       </View>
 
-      {/* Grade Level List */}
-      {loading && !isRefreshing ? (
+      {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#1a73e8" />
           <Text style={styles.loadingText}>Loading grade levels...</Text>
@@ -530,8 +576,6 @@ export default function GradeLevelManagement() {
             style={styles.retryButton}
             onPress={() => {
               setError(null);
-              setRetryCount(0);
-              fetchGradeLevels(true);
             }}
           >
             <Text style={styles.retryButtonText}>Retry</Text>
@@ -548,7 +592,7 @@ export default function GradeLevelManagement() {
                   <MaterialIcons name="school" size={30} color="#666" />
                 </View>
                 <View style={styles.teacherDetails}>
-                  <Text style={styles.teacherName}>{item.name || 'Unnamed Grade Level'}</Text>
+                  <Text style={styles.teacherName}>{item.name}</Text>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>ID:</Text>
                     <Text style={styles.detailValue}>{item.id}</Text>
@@ -556,6 +600,10 @@ export default function GradeLevelManagement() {
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Description:</Text>
                     <Text style={styles.detailValue}>{item.description || 'No description'}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Status:</Text>
+                    <Text style={styles.detailValue}>{item.is_active ? 'Active' : 'Inactive'}</Text>
                   </View>
                 </View>
               </View>
@@ -583,7 +631,7 @@ export default function GradeLevelManagement() {
             isLoadingMore ? (
               <View style={styles.loadingMoreContainer}>
                 <ActivityIndicator size="small" color="#1a73e8" />
-                <Text style={styles.loadingMoreText}>Loading more grade levels...</Text>
+                <Text style={styles.loadingMoreText}>Loading more...</Text>
               </View>
             ) : null
           )}
@@ -591,7 +639,6 @@ export default function GradeLevelManagement() {
         />
       )}
 
-      {/* Add Grade Level Modal */}
       <Modal
         visible={isAddModalVisible}
         animationType="slide"
@@ -602,7 +649,6 @@ export default function GradeLevelManagement() {
         </View>
       </Modal>
 
-      {/* Edit Grade Level Modal */}
       <Modal
         visible={isEditModalVisible}
         animationType="slide"
@@ -613,7 +659,6 @@ export default function GradeLevelManagement() {
         </View>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
       <Modal
         visible={isDeleteModalVisible}
         animationType="fade"
@@ -623,7 +668,7 @@ export default function GradeLevelManagement() {
           <View style={styles.deleteConfirmation}>
             <Text style={styles.deleteTitle}>Are you sure you want to delete this grade level?</Text>
             <Text style={styles.deleteMessage}>
-              This action cannot be undone. This will permanently delete the grade level record from the database.
+              This action cannot be undone. This will permanently delete the grade level record.
             </Text>
             <View style={styles.deleteActions}>
               <TouchableOpacity
@@ -726,13 +771,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   teacherList: {
-    padding: 16,
+    padding: 12,
   },
   teacherCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    padding: 12,
+    marginBottom: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -767,10 +812,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   teacherName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   detailRow: {
     flexDirection: 'row',
@@ -778,12 +823,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     width: 80,
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
   },
   detailValue: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#333',
   },
   actionButtons: {
@@ -791,27 +836,25 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     borderTopWidth: 1,
     borderTopColor: '#eee',
-    paddingTop: 16,
-    marginTop: 12,
+    paddingTop: 12,
+    marginTop: 8,
   },
   actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 8,
   },
   editButton: {
     backgroundColor: '#1a73e8',
   },
   deleteButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#ff4444',
   },
   actionButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   modalContainer: {
     flex: 1,
@@ -845,7 +888,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   formTitle: {
     fontSize: 20,
@@ -862,15 +905,15 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
     marginBottom: 16,
   },
   inputError: {
-    borderColor: '#FF3B30',
+    borderColor: '#ff4444',
   },
-  formErrorText: {
-    color: '#FF3B30',
+  errorText: {
+    color: '#ff4444',
     fontSize: 12,
     marginTop: -12,
     marginBottom: 8,
@@ -879,7 +922,7 @@ const styles = StyleSheet.create({
   formActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 24,
+    marginTop: 20,
   },
   cancelButton: {
     marginRight: 12,
@@ -923,16 +966,16 @@ const styles = StyleSheet.create({
     }),
   },
   deleteTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 16,
+    marginBottom: 12,
     textAlign: 'center',
   },
   deleteMessage: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    marginBottom: 24,
+    marginBottom: 20,
     textAlign: 'center',
   },
   deleteActions: {
@@ -941,7 +984,7 @@ const styles = StyleSheet.create({
   },
   deleteAction: {
     padding: 12,
-    minWidth: 120,
+    minWidth: 100,
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: 8,
@@ -950,7 +993,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   confirmDelete: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#ff4444',
   },
   deleteActionText: {
     fontSize: 16,
@@ -961,10 +1004,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 16,
     color: '#666',
   },
@@ -974,33 +1016,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  errorText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#ff4444',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
   retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: 16,
     backgroundColor: '#1a73e8',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 8,
   },
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
-    marginLeft: 8,
+    fontWeight: '500',
   },
   loadingMoreContainer: {
-    paddingVertical: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
   },
   loadingMoreText: {
-    marginTop: 8,
-    fontSize: 14,
+    marginLeft: 8,
+    fontSize: 16,
     color: '#666',
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
 }); 

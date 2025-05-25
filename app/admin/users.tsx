@@ -32,9 +32,9 @@ interface FormData {
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<User[]>([
-    { id: '1', name: 'John Doe', email: 'john@example.com', role: 'Admin' },
-    { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'User' },
-    { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'User' },
+  { id: '1', name: 'John Doe', email: 'john@example.com', role: 'Admin' },
+  { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'User' },
+  { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'User' },
   ]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const toast = useToast();
@@ -177,31 +177,31 @@ export default function UserManagement() {
               <Picker.Item key={role} label={role} value={role} />
             ))}
           </Picker>
-        </View>
+      </View>
         <View style={styles.formActions}>
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => (isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false))}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+        </TouchableOpacity>
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
             <Text style={styles.submitButtonText}>{isEdit ? 'Update User' : 'Add User'}</Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       </View>
-    );
+    </View>
+  );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search users..."
-            value={searchQuery}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search users..."
+          value={searchQuery}
             onChangeText={handleSearch}
           />
         </View>
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
       web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       }
     }),
   },
