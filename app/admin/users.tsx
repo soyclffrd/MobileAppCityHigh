@@ -2,17 +2,17 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 import { Button } from '../../components/ui/button';
@@ -42,7 +42,7 @@ const INITIAL_FORM_DATA: UserFormData = {
   role: 'Student'
 };
 
-const API_URL = 'http://192.168.0.102:3001/api';
+const API_URL = 'http://192.168.0.100:3001/api';
 const DEBOUNCE_DELAY = 1000; // 1 second delay
 const ITEMS_PER_PAGE = 10;
 const MAX_RETRIES = 3;
@@ -54,6 +54,13 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 300
   const id = setTimeout(() => controller.abort(), timeout);
 
   try {
+    console.log('Making request to:', url);
+    console.log('Request options:', {
+      method: options.method,
+      headers: options.headers,
+      signal: controller.signal
+    });
+
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
@@ -62,12 +69,31 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 300
         'Content-Type': (options.headers as Record<string, string>)?.['Content-Type'] || 'application/json',
       },
     });
+
     clearTimeout(id);
+    
+    console.log('Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
     return response;
   } catch (error: unknown) {
     clearTimeout(id);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timed out. Please try again.');
+    console.error('Fetch error details:', {
+      error,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      if (error.message.includes('Failed to fetch')) {
+        throw new Error('Could not connect to the server. Please check if the server is running and accessible.');
+      }
     }
     throw error;
   }
@@ -124,15 +150,12 @@ export default function UserManagement() {
       }
 
       const currentPage = isRefresh ? 1 : page;
+      const url = `${API_URL}/users?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`;
       
-      console.log('Fetching users:', {
-        page: currentPage,
-        limit: ITEMS_PER_PAGE,
-        search: searchQuery
-      });
+      console.log('Fetching users from:', url);
 
       const response = await fetchWithTimeout(
-        `${API_URL}/teachers?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`,
+        url,
         {
           method: 'GET',
           headers: {
@@ -143,28 +166,48 @@ export default function UserManagement() {
       );
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Server error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('Fetched users:', data);
+      console.log('API Response:', data);
       
       if (data.success) {
+        console.log('Setting users data:', data.data);
         if (isRefresh) {
-          setUsers(data.teachers || []);
+          setUsers(data.data || []);
+          setPage(1);
         } else {
-          setUsers(prev => [...prev, ...(data.teachers || [])]);
+          // Filter out any potential duplicates before adding new items
+          const newUsers = data.data || [];
+          setUsers(prevUsers => {
+            const existingIds = new Set(prevUsers.map(user => user.id));
+            const uniqueNewUsers = newUsers.filter((user: User) => !existingIds.has(user.id));
+            return [...prevUsers, ...uniqueNewUsers];
+          });
         }
-        setHasMore((data.teachers || []).length === ITEMS_PER_PAGE);
+        setHasMore((data.data || []).length === ITEMS_PER_PAGE);
         setRetryCount(0);
         if (!isRefresh) {
           setPage(prev => prev + 1);
         }
       } else {
+        console.error('API returned error:', data);
         throw new Error(data.message || 'Failed to fetch users');
       }
     } catch (error: any) {
-      console.error('Error fetching users:', error);
+      console.error('Error in fetchUsers:', {
+        error,
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+      
       let errorMessage = 'Could not connect to server. ';
       
       if (error instanceof TypeError && error.message === 'Network request failed') {
@@ -178,6 +221,7 @@ export default function UserManagement() {
       setError(errorMessage);
       
       if (retryCount < MAX_RETRIES) {
+        console.log(`Retrying... Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
           fetchUsers(isRefresh);
@@ -193,12 +237,13 @@ export default function UserManagement() {
   const handleRefresh = () => {
     setIsRefreshing(true);
     setPage(1);
+    setUsers([]); // Clear existing users before refresh
     fetchUsers(true);
   };
 
   const handleLoadMore = () => {
     if (!isLoadingMore && hasMore) {
-      fetchUsers();
+      fetchUsers(false);
     }
   };
 
@@ -274,7 +319,7 @@ export default function UserManagement() {
       console.log('Submitting form data:', formData);
 
       // Validate form data
-      if (!formData.name || !formData.email || !formData.password || !formData.role) {
+      if (!formData.name || !formData.email || !formData.role) {
         toast.show('Please fill in all required fields', { type: 'error' });
         return;
       }
@@ -286,49 +331,69 @@ export default function UserManagement() {
         return;
       }
 
-      // Validate password length
-      if (formData.password.length < 6) {
+      // Validate password length only for new users
+      if (!selectedUser && (!formData.password || formData.password.length < 6)) {
         toast.show('Password must be at least 6 characters long', { type: 'error' });
         return;
       }
 
-      const response = await fetchWithTimeout(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role
-        }),
-      });
+      let response;
+      if (selectedUser) {
+        // Update existing user
+        response = await fetchWithTimeout(`${API_URL}/users/${selectedUser.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password || undefined, // Only include password if it's provided
+            role: formData.role
+          }),
+        });
+      } else {
+        // Create new user
+        response = await fetchWithTimeout(`${API_URL}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            role: formData.role
+          }),
+        });
+      }
 
       const data = await response.json();
-      console.log('Add response:', data);
+      console.log('Add/Edit response:', data);
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to create user');
+        throw new Error(data.message || `Failed to ${selectedUser ? 'update' : 'create'} user`);
       }
 
       if (data.success) {
         setIsAddModalVisible(false);
+        setIsEditModalVisible(false);
         setFormData({
           name: '',
           email: '',
           password: '',
           role: 'Student'
         });
+        setSelectedUser(null);
         // Reset page and fetch fresh data
         setPage(1);
         setUsers([]);
         fetchUsers(true);
-        toast.show('User added successfully!', { type: 'success' });
+        toast.show(`User ${selectedUser ? 'updated' : 'added'} successfully!`, { type: 'success' });
       }
     } catch (error: any) {
       console.error('Error submitting user:', error);
-      toast.show(error.message || 'Failed to create user. Please try again later.', { type: 'error' });
+      toast.show(error.message || `Failed to ${selectedUser ? 'update' : 'create'} user. Please try again later.`, { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -341,7 +406,7 @@ export default function UserManagement() {
       setLoading(true);
       setError(null);
 
-      const response = await fetchWithTimeout(`${API_URL}/teachers/${selectedUser.id}`, {
+      const response = await fetchWithTimeout(`${API_URL}/users/${selectedUser.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -428,7 +493,7 @@ export default function UserManagement() {
       ) : (
       <FlatList
           data={users}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => `user-${item.id}-${item.email}`}
           renderItem={({ item }) => (
             <View style={styles.teacherCard}>
               <View style={styles.teacherInfo}>
@@ -480,6 +545,10 @@ export default function UserManagement() {
             ) : null
           )}
           contentContainerStyle={styles.teacherList}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={10}
         />
       )}
 

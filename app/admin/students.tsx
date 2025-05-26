@@ -39,7 +39,7 @@ interface FormData {
   avatar: string | null;
 }
 
-const API_URL = 'http://192.168.0.102:3001/api';
+const API_URL = 'http://192.168.0.100:3001/api';
 
 // Add debounce delay constant
 const DEBOUNCE_DELAY = 1000; // 1 second delay

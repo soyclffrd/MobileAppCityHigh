@@ -37,7 +37,7 @@ const INITIAL_FORM_DATA: FormData = {
   is_active: true,
 };
 
-const API_URL = 'http://192.168.0.102:3001/api';
+const API_URL = 'http://192.168.0.100:3001/api';
 const DEBOUNCE_DELAY = 1000; // 1 second delay
 const ITEMS_PER_PAGE = 10;
 const MAX_RETRIES = 3;

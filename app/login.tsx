@@ -19,9 +19,9 @@ import { useAuth } from './context/AuthContext';
 
 // API Configuration
 const API_BASE_URL = Platform.select({
-  ios: 'http://192.168.0.102:3001',
-  android: 'http://192.168.0.102:3001',
-  default: 'http://192.168.0.102:3001'
+  ios: 'http://192.168.0.100:3001',
+  android: 'http://192.168.0.100:3001',
+  default: 'http://192.168.0.100:3001'
 });
 
 export default function Login() {
