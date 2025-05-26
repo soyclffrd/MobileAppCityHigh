@@ -207,7 +207,52 @@ export default function UserManagement() {
     setIsAddModalVisible(true);
   };
 
-  const handleEditUser = (user: User) => {
+  const handleEditUser = async (user: User) => {
+    try {
+      setLoading(true);
+      const response = await fetchWithTimeout(`${API_URL}/users/${user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password || undefined,
+          role: formData.role
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Edit response:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update user');
+      }
+
+      if (data.success) {
+        setIsEditModalVisible(false);
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          role: 'Student'
+        });
+        // Reset page and fetch fresh data
+        setPage(1);
+        setUsers([]);
+        fetchUsers(true);
+        toast.show('User updated successfully!', { type: 'success' });
+      }
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast.show(error.message || 'Failed to update user. Please try again later.', { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenEditModal = (user: User) => {
     setSelectedUser(user);
     setFormData({
       name: user.name,
@@ -247,7 +292,7 @@ export default function UserManagement() {
         return;
       }
 
-      const response = await fetchWithTimeout(`${API_URL}/teachers`, {
+      const response = await fetchWithTimeout(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,9 +301,7 @@ export default function UserManagement() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
-          subject: formData.role === 'Teacher' ? 'Not Assigned' : '',
-          gender: 'Not Specified',
-          phone: ''
+          role: formData.role
         }),
       });
 
@@ -277,6 +320,9 @@ export default function UserManagement() {
           password: '',
           role: 'Student'
         });
+        // Reset page and fetch fresh data
+        setPage(1);
+        setUsers([]);
         fetchUsers(true);
         toast.show('User added successfully!', { type: 'success' });
       }
@@ -408,7 +454,7 @@ export default function UserManagement() {
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.editButton]}
-                  onPress={() => handleEditUser(item)}
+                  onPress={() => handleOpenEditModal(item)}
                 >
                   <Text style={styles.actionButtonText}>Edit</Text>
                 </TouchableOpacity>
