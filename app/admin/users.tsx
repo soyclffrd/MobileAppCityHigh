@@ -1,11 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import React, { useState } from 'react';
+import { X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     Modal,
     Platform,
-    RefreshControl,
     SafeAreaView,
     StatusBar,
     StyleSheet,
@@ -15,28 +15,74 @@ import {
     View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
+import { Button } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 
 interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+interface UserFormData {
+  name: string;
+  email: string;
+  password: string;
   role: string;
 }
 
-interface FormData {
-  name: string;
-  email: string;
-  role: string;
-}
+const INITIAL_FORM_DATA: UserFormData = {
+  name: '',
+  email: '',
+  password: '',
+  role: 'Student'
+};
+
+const API_URL = 'http://192.168.0.102:3001/api';
+const DEBOUNCE_DELAY = 1000; // 1 second delay
+const ITEMS_PER_PAGE = 10;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+
+// Add timeout configuration
+const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 30000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': (options.headers as Record<string, string>)?.['Content-Type'] || 'application/json',
+      },
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error: unknown) {
+    clearTimeout(id);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    throw error;
+  }
+};
 
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState<User[]>([
-  { id: '1', name: 'John Doe', email: 'john@example.com', role: 'Admin' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'User' },
-  { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'User' },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const toast = useToast();
 
   // Modal states
@@ -46,30 +92,129 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Form states
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    role: '',
-  });
+  const [formData, setFormData] = useState<UserFormData>(INITIAL_FORM_DATA);
 
   const roles = ['Admin', 'Student', 'Teacher'];
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        setPage(1);
+        setUsers([]);
+        fetchUsers(true);
+      }
+    }, DEBOUNCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchUsers(true);
+  }, []);
+
+  const fetchUsers = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const currentPage = isRefresh ? 1 : page;
+      
+      console.log('Fetching users:', {
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        search: searchQuery
+      });
+
+      const response = await fetchWithTimeout(
+        `${API_URL}/teachers?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Fetched users:', data);
+      
+      if (data.success) {
+        if (isRefresh) {
+          setUsers(data.teachers || []);
+        } else {
+          setUsers(prev => [...prev, ...(data.teachers || [])]);
+        }
+        setHasMore((data.teachers || []).length === ITEMS_PER_PAGE);
+        setRetryCount(0);
+        if (!isRefresh) {
+          setPage(prev => prev + 1);
+        }
+      } else {
+        throw new Error(data.message || 'Failed to fetch users');
+      }
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      let errorMessage = 'Could not connect to server. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check if the server is running and your internet connection is stable.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      setError(errorMessage);
+      
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          fetchUsers(isRefresh);
+        }, RETRY_DELAY);
+      }
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+      setIsRefreshing(false);
+    }
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
-    // Simulate refresh delay
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+    setPage(1);
+    fetchUsers(true);
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchUsers();
+    }
   };
 
   const handleAddUser = () => {
-    setFormData({ name: '', email: '', role: '' });
+    setFormData(INITIAL_FORM_DATA);
     setIsAddModalVisible(true);
   };
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
-    setFormData({ name: user.name, email: user.email, role: user.role });
+    setFormData({
+      name: user.name,
+      email: user.email,
+      password: '',
+      role: user.role,
+    });
     setIsEditModalVisible(true);
   };
 
@@ -78,119 +223,110 @@ export default function UserManagement() {
     setIsDeleteModalVisible(true);
   };
 
-  const handleSubmitAdd = () => {
-    if (!formData.name || !formData.email || !formData.role) {
-      toast.show('Please fill in all required fields', { type: 'error' });
-      return;
-    }
-    const newUser: User = {
-      id: (users.length + 1).toString(),
-      ...formData,
-    };
-    setUsers([...users, newUser]);
-    setIsAddModalVisible(false);
-    toast.show('User added successfully!', { type: 'success' });
-  };
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      console.log('Submitting form data:', formData);
 
-  const handleSubmitEdit = () => {
-    if (!formData.name || !formData.email || !formData.role) {
-      toast.show('Please fill in all required fields', { type: 'error' });
-      return;
-    }
-    if (!selectedUser) return;
-    const updatedUsers = users.map((user) =>
-      user.id === selectedUser.id ? { ...user, ...formData } : user
-    );
-    setUsers(updatedUsers);
-    setIsEditModalVisible(false);
-    toast.show('User updated successfully!', { type: 'success' });
-  };
-
-  const handleConfirmDelete = () => {
-    if (!selectedUser) return;
-    const updatedUsers = users.filter((user) => user.id !== selectedUser.id);
-    setUsers(updatedUsers);
-    setIsDeleteModalVisible(false);
-    toast.show('User deleted successfully!', { type: 'success' });
-  };
-
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-  };
-
-  const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const UserForm = ({ isEdit }: { isEdit: boolean }) => {
-    const [localFormData, setLocalFormData] = useState<FormData>(formData);
-    React.useEffect(() => {
-      setLocalFormData(formData);
-    }, [formData]);
-    const handleLocalChange = (field: keyof FormData, value: string) => {
-      setLocalFormData((prev) => ({ ...prev, [field]: value }));
-    };
-    const handleSubmit = () => {
-      setFormData(localFormData);
-      if (isEdit) {
-        handleSubmitEdit();
-      } else {
-        handleSubmitAdd();
+      // Validate form data
+      if (!formData.name || !formData.email || !formData.password || !formData.role) {
+        toast.show('Please fill in all required fields', { type: 'error' });
+        return;
       }
-    };
-    return (
-      <View style={styles.formContainer}>
-        <View style={styles.formHeader}>
-          <Text style={styles.formTitle}>{isEdit ? 'Edit User' : 'Add User'}</Text>
-          <TouchableOpacity
-            onPress={() => (isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false))}
-          >
-            <MaterialIcons name="close" size={24} color="#666" />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.inputLabel}>Name</Text>
-        <TextInput
-          style={styles.input}
-          value={localFormData.name}
-          onChangeText={(text) => handleLocalChange('name', text)}
-          placeholder="Enter user's name"
-        />
-        <Text style={styles.inputLabel}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={localFormData.email}
-          onChangeText={(text) => handleLocalChange('email', text)}
-          placeholder="Enter user's email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <Text style={styles.inputLabel}>Role</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={localFormData.role}
-            onValueChange={(value) => handleLocalChange('role', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Role" value="" />
-            {roles.map((role) => (
-              <Picker.Item key={role} label={role} value={role} />
-            ))}
-          </Picker>
-      </View>
-        <View style={styles.formActions}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => (isEdit ? setIsEditModalVisible(false) : setIsAddModalVisible(false))}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>{isEdit ? 'Update User' : 'Add User'}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toast.show('Please enter a valid email address', { type: 'error' });
+        return;
+      }
+
+      // Validate password length
+      if (formData.password.length < 6) {
+        toast.show('Password must be at least 6 characters long', { type: 'error' });
+        return;
+      }
+
+      const response = await fetchWithTimeout(`${API_URL}/teachers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          subject: formData.role === 'Teacher' ? 'Not Assigned' : '',
+          gender: 'Not Specified',
+          phone: ''
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Add response:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to create user');
+      }
+
+      if (data.success) {
+        setIsAddModalVisible(false);
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          role: 'Student'
+        });
+        fetchUsers(true);
+        toast.show('User added successfully!', { type: 'success' });
+      }
+    } catch (error: any) {
+      console.error('Error submitting user:', error);
+      toast.show(error.message || 'Failed to create user. Please try again later.', { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetchWithTimeout(`${API_URL}/teachers/${selectedUser.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to delete user');
+      }
+
+      setUsers(users.filter(u => u.id !== selectedUser.id));
+      setIsDeleteModalVisible(false);
+      toast.show('User deleted successfully!', { type: 'success' });
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      let errorMessage = 'Failed to delete user. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check your internet connection and try again.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      toast.show(errorMessage, { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -202,13 +338,13 @@ export default function UserManagement() {
           style={styles.searchInput}
           placeholder="Search users..."
           value={searchQuery}
-            onChangeText={handleSearch}
-          />
+          onChangeText={setSearchQuery}
+        />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
-          <MaterialIcons name="notifications" size={24} color="#333" />
+          <MaterialIcons name="notifications" size={24} color="#fff" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>2</Text>
+            <Text style={styles.notificationBadgeText}>3</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -224,74 +360,260 @@ export default function UserManagement() {
         </TouchableOpacity>
       </View>
 
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1a73e8" />
+          <Text style={styles.loadingText}>Loading users...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={48} color="#ff4444" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              fetchUsers(true);
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <FlatList
-        style={styles.teacherList}
-        data={filteredUsers}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item: user }) => (
-          <View style={styles.teacherCard}>
-            <View style={styles.teacherInfo}>
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <MaterialIcons name="person" size={30} color="#666" />
+          data={users}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.teacherCard}>
+              <View style={styles.teacherInfo}>
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <MaterialIcons name="person" size={30} color="#666" />
+                </View>
+                <View style={styles.teacherDetails}>
+                  <Text style={styles.teacherName}>{item.name}</Text>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>ID:</Text>
+                    <Text style={styles.detailValue}>{item.id}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Email:</Text>
+                    <Text style={styles.detailValue}>{item.email}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Role:</Text>
+                    <Text style={styles.detailValue}>{item.role}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.teacherDetails}>
-                <Text style={styles.teacherName}>{user.name}</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>ID:</Text>
-                  <Text style={styles.detailValue}>{user.id}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Email:</Text>
-                  <Text style={styles.detailValue}>{user.email}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Role:</Text>
-                  <Text style={styles.detailValue}>{user.role}</Text>
-                </View>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.editButton]}
+                  onPress={() => handleEditUser(item)}
+                >
+                  <Text style={styles.actionButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDeleteUser(item)}
+                >
+                  <Text style={styles.actionButtonText}>Delete</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.editButton]}
-                onPress={() => handleEditUser(user)}
-              >
-                <Text style={styles.actionButtonText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => handleDeleteUser(user)}
-              >
-                <Text style={styles.actionButtonText}>Delete</Text>
-              </TouchableOpacity>
+          )}
+          onRefresh={handleRefresh}
+          refreshing={isRefreshing}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={() => (
+            isLoadingMore ? (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#1a73e8" />
+                <Text style={styles.loadingMoreText}>Loading more...</Text>
+              </View>
+            ) : null
+          )}
+          contentContainerStyle={styles.teacherList}
+        />
+      )}
+
+      <Dialog visible={isAddModalVisible} onClose={() => setIsAddModalVisible(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+            <TouchableOpacity onPress={() => setIsAddModalVisible(false)} style={styles.closeButton}>
+              <X size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </DialogHeader>
+          <View style={styles.form}>
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.name}
+                onChangeText={(text) => setFormData({ ...formData, name: text })}
+                placeholder="Enter full name"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.email}
+                onChangeText={(text) => setFormData({ ...formData, email: text })}
+                placeholder="Enter email address"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.password}
+                onChangeText={(text) => setFormData({ ...formData, password: text })}
+                placeholder="Enter password"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.inputLabel}>Role</Text>
+              <View style={styles.roleContainer}>
+                {roles.map((role) => (
+                  <TouchableOpacity
+                    key={role}
+                    style={[
+                      styles.roleButton,
+                      formData.role === role && styles.roleButtonActive
+                    ]}
+                    onPress={() => setFormData({ ...formData, role })}
+                  >
+                    <Text style={[
+                      styles.roleButtonText,
+                      formData.role === role && styles.roleButtonTextActive
+                    ]}>{role}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.formActions}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => setIsAddModalVisible(false)}
+                size="md"
+              />
+              <Button
+                title="Add User"
+                onPress={handleSubmit}
+                disabled={loading}
+                size="md"
+              />
             </View>
           </View>
-        )}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            colors={['#1a73e8']}
-            tintColor="#1a73e8"
-          />
-        }
-      />
+        </DialogContent>
+      </Dialog>
 
-      <Modal visible={isAddModalVisible} animationType="slide" transparent={true}>
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        transparent={true}
+      >
         <View style={styles.modalContainer}>
-          <UserForm isEdit={false} />
+          <View style={styles.formContainer}>
+            <View style={styles.formHeader}>
+              <Text style={styles.formTitle}>Edit User</Text>
+              <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
+                <X size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.form}>
+              <Text style={styles.inputLabel}>Name</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.name}
+                onChangeText={(text) => setFormData({ ...formData, name: text })}
+                placeholder="Enter name"
+              />
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.email}
+                onChangeText={(text) => setFormData({ ...formData, email: text })}
+                placeholder="Enter email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <Text style={styles.inputLabel}>Password</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.password}
+                onChangeText={(text) => setFormData({ ...formData, password: text })}
+                placeholder="Enter new password (leave blank to keep current)"
+                secureTextEntry
+              />
+              <Text style={styles.inputLabel}>Role</Text>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    formData.role === 'Student' && styles.roleButtonActive
+                  ]}
+                  onPress={() => setFormData({ ...formData, role: 'Student' })}
+                >
+                  <Text style={[
+                    styles.roleButtonText,
+                    formData.role === 'Student' && styles.roleButtonTextActive
+                  ]}>Student</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    formData.role === 'Admin' && styles.roleButtonActive
+                  ]}
+                  onPress={() => setFormData({ ...formData, role: 'Admin' })}
+                >
+                  <Text style={[
+                    styles.roleButtonText,
+                    formData.role === 'Admin' && styles.roleButtonTextActive
+                  ]}>Admin</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.formActions}>
+                <Button
+                  title="Cancel"
+                  variant="outline"
+                  onPress={() => setIsEditModalVisible(false)}
+                />
+                <Button
+                  title="Update User"
+                  onPress={handleSubmit}
+                  disabled={loading}
+                />
+              </View>
+            </View>
+          </View>
         </View>
       </Modal>
-      <Modal visible={isEditModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <UserForm isEdit={true} />
-        </View>
-      </Modal>
-      <Modal visible={isDeleteModalVisible} animationType="fade" transparent={true}>
+
+      <Modal
+        visible={isDeleteModalVisible}
+        animationType="fade"
+        transparent={true}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.deleteConfirmation}>
             <Text style={styles.deleteTitle}>Are you sure you want to delete this user?</Text>
             <Text style={styles.deleteMessage}>
-              This action cannot be undone. This will permanently delete the user record from the database.
+              This action cannot be undone. This will permanently delete the user record.
             </Text>
             <View style={styles.deleteActions}>
               <TouchableOpacity
@@ -412,7 +734,7 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
       web: {
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       }
     }),
   },
@@ -467,8 +789,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
     marginLeft: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   editButton: {
     backgroundColor: '#1a73e8',
@@ -522,17 +842,29 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    color: '#666',
+    fontWeight: '600',
+    color: '#374151',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#E5E7EB',
     borderRadius: 8,
     padding: 12,
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 16,
+    fontSize: 16,
+    color: '#1F2937',
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   inputError: {
     borderColor: '#ff4444',
@@ -556,7 +888,8 @@ const styles = StyleSheet.create({
   formActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 20,
+    gap: 12,
+    marginTop: 24,
   },
   cancelButton: {
     marginRight: 12,
@@ -633,5 +966,94 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#1a73e8',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+  },
+  loadingMoreText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#666',
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+  },
+  form: {
+    padding: 24,
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  roleButton: {
+    flex: 1,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  roleButtonActive: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  roleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  roleButtonTextActive: {
+    color: '#3B82F6',
   },
 }); 

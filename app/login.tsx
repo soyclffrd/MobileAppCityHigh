@@ -19,9 +19,9 @@ import { useAuth } from './context/AuthContext';
 
 // API Configuration
 const API_BASE_URL = Platform.select({
-  ios: 'http://192.168.0.102:3001', // Your actual IP address
-  android: 'http://192.168.0.102:3001', // Your actual IP address
-  default: 'http://192.168.0.102:3001'  // Your actual IP address
+  ios: 'http://192.168.0.102:3001',
+  android: 'http://192.168.0.102:3001',
+  default: 'http://192.168.0.102:3001'
 });
 
 export default function Login() {
@@ -74,28 +74,35 @@ export default function Login() {
       
       if (data.success) {
         setUser(data.user);
-        if (data.user.role === 'user') {
-          console.log('Navigating to /user/dashboard');
+        // Clear form
+        setEmail('');
+        setPassword('');
+        
+        // Redirect based on role
+        if (data.user.role === 'Admin') {
+          router.replace('/admin/dashboardoverview');
+        } else if (data.user.role === 'Student') {
           router.replace('/user/dashboard');
-        } else if (data.user.role === 'admin') {
-          console.log('Navigating to /admin/dashboardoverview');
-          try {
-            router.replace('/admin/dashboardoverview');
-          } catch (err) {
-            console.error('Navigation error:', err);
-            Alert.alert('Navigation Error', 'Could not navigate to admin dashboard.');
-          }
         } else {
-          Alert.alert('Login Failed', 'Unauthorized role.');
+          Alert.alert('Error', 'Invalid user role');
         }
       } else {
-        Alert.alert('Login Failed', data.message || 'Invalid credentials.');
+        Alert.alert(
+          'Login Failed',
+          data.message || 'Invalid credentials.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (e) {
       console.error('Login error:', e);
-      Alert.alert('Error', 'Could not connect to server.');
+      Alert.alert(
+        'Error',
+        'Could not connect to server. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -129,6 +136,7 @@ export default function Login() {
                   autoCapitalize="none"
                   accessibilityLabel="Email input"
                   placeholderTextColor="#999"
+                  editable={!loading}
                 />
                 {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
               </View>
@@ -142,11 +150,12 @@ export default function Login() {
                   secureTextEntry
                   accessibilityLabel="Password input"
                   placeholderTextColor="#999"
+                  editable={!loading}
                 />
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
               </View>
               <TouchableOpacity
-                style={styles.button}
+                style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleLogin}
                 disabled={loading}
                 accessibilityLabel="Login button"
@@ -265,6 +274,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',

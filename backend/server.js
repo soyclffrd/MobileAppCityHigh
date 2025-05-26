@@ -3,6 +3,8 @@ const cors = require('cors');
 const path = require('path');
 const gradeLevelsRouter = require('./routes/grade-levels');
 const sectionsRouter = require('./routes/sections');
+const usersRouter = require('./routes/users');
+const authRouter = require('./routes/auth');
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.use('/api/grade-levels', gradeLevelsRouter);
 app.use('/api/sections', sectionsRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/auth', authRouter);
 
 // Add error handling middleware
 app.use((err, req, res, next) => {

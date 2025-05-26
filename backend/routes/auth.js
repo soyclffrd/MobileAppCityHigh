@@ -5,23 +5,51 @@ const router = express.Router();
 
 // Register
 router.post('/register', async (req, res) => {
+  console.log('Registration request received:', req.body);
   const { name, email, password, role } = req.body;
+
+  // Validate input
   if (!name || !email || !password || !role) {
-    return res.json({ success: false, message: 'All fields are required' });
+    console.log('Missing fields:', { name: !!name, email: !!email, password: !!password, role: !!role });
+    return res.status(400).json({ success: false, message: 'All fields are required' });
   }
+
+  // Validate role
+  const validRoles = ['Admin', 'Student', 'Teacher'];
+  if (!validRoles.includes(role)) {
+    console.log('Invalid role:', role);
+    return res.status(400).json({ success: false, message: 'Invalid role' });
+  }
+
   try {
-    const [rows] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (rows.length > 0) {
-      return res.json({ success: false, message: 'Email already exists' });
+    // Check if the email already exists
+    const [existingUsers] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (existingUsers.length > 0) {
+      console.log('Email already exists:', email);
+      return res.status(400).json({ success: false, message: 'Email already exists' });
     }
-    const hashed = await bcrypt.hash(password, 10);
-    await pool.query(
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert the new user
+    const [result] = await pool.query(
       'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-      [name, email, hashed, role]
+      [name, email, hashedPassword, role]
     );
-    res.json({ success: true });
-  } catch (err) {
-    res.json({ success: false, message: 'Registration failed' });
+
+    console.log('User registered successfully:', { userId: result.insertId, name, email, role });
+    res.status(201).json({ 
+      success: true, 
+      message: 'User registered successfully',
+      userId: result.insertId 
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Registration failed. Please try again.' 
+    });
   }
 });
 

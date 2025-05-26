@@ -1,12 +1,14 @@
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { Bell, Clock, GraduationCap, LogOut, X } from "lucide-react-native";
 import React, { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { useAuth } from '../context/AuthContext';
 
 declare namespace JSX {
   interface Element {}
@@ -17,6 +19,8 @@ export default function Dashboard(): JSX.Element {
   const [activeTab, setActiveTab] = useState("profile");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const { width } = useWindowDimensions();
+  const { setUser } = useAuth();
+  const router = useRouter();
 
   // Responsive helpers
   const isSmallScreen = width < 400;
@@ -61,10 +65,28 @@ export default function Dashboard(): JSX.Element {
     }
   };
 
-  // Handler for logout (placeholder)
+  // Handler for logout
   const handleLogout = () => {
-    // TODO: Implement logout logic
-    alert('Logout clicked!');
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            // Clear user data
+            setUser(null);
+            // Redirect to login page
+            router.replace('/login');
+          }
+        }
+      ]
+    );
   };
 
   // Add the handler at the top of the component

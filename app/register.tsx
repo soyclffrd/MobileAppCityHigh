@@ -63,23 +63,49 @@ export default function Register() {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      const res = await fetch('http://192.168.1.33:3001/api/register', {
+      const requestBody = { name, email, password, role: 'Student' };
+      console.log('Sending registration request:', requestBody);
+      
+      const res = await fetch('http://192.168.0.102:3001/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role: 'user' }),
+        body: JSON.stringify(requestBody),
       });
+      
       const data = await res.json();
+      console.log('Registration response:', data);
+      
       if (data.success) {
-        Alert.alert('Registration Successful', 'You can now log in.', [
-          { text: 'OK', onPress: () => router.replace('/login') },
-        ]);
+        Alert.alert(
+          'Success!',
+          'Registration successful! Redirecting to login...',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                router.replace('/login');
+              }
+            }
+          ],
+          { cancelable: false }
+        );
       } else {
-        Alert.alert('Registration Failed', data.message || 'Try again.');
+        Alert.alert(
+          'Registration Failed',
+          data.message || 'Please try again.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (e) {
-      Alert.alert('Error', 'Could not connect to server.');
+      console.error('Registration error:', e);
+      Alert.alert(
+        'Error',
+        'Could not connect to server. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -120,6 +146,7 @@ export default function Register() {
                   onChangeText={setName}
                   accessibilityLabel="Name input"
                   placeholderTextColor="#999"
+                  editable={!loading}
                 />
                 {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
               </View>
@@ -134,6 +161,7 @@ export default function Register() {
                   autoCapitalize="none"
                   accessibilityLabel="Email input"
                   placeholderTextColor="#999"
+                  editable={!loading}
                 />
                 {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
               </View>
@@ -147,6 +175,7 @@ export default function Register() {
                   secureTextEntry
                   accessibilityLabel="Password input"
                   placeholderTextColor="#999"
+                  editable={!loading}
                 />
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
               </View>
@@ -160,11 +189,12 @@ export default function Register() {
                   secureTextEntry
                   accessibilityLabel="Confirm password input"
                   placeholderTextColor="#999"
+                  editable={!loading}
                 />
                 {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
               </View>
               <TouchableOpacity
-                style={styles.button}
+                style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleRegister}
                 disabled={loading}
                 accessibilityLabel="Register button"
@@ -295,6 +325,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',

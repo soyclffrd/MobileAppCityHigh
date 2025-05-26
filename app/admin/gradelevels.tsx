@@ -371,7 +371,7 @@ export default function GradeLevelManagement() {
       if (!isEdit) {
         setLocalFormData(INITIAL_FORM_DATA);
       } else {
-        setLocalFormData(formData);
+      setLocalFormData(formData);
       }
       setFormErrors({});
     }, [isEdit, formData]);

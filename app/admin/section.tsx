@@ -1,17 +1,17 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    FlatList,
+    Modal,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -125,7 +125,7 @@ export default function SectionManagement() {
       });
 
       const response = await fetchWithTimeout(
-        `${API_URL}/sections?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`,
+        `${API_URL}/grade-levels?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`,
         {
           method: 'GET',
           headers: {
@@ -222,7 +222,7 @@ export default function SectionManagement() {
 
       console.log('Adding new section with data:', formData);
 
-      const response = await fetchWithTimeout(`${API_URL}/sections`, {
+      const response = await fetchWithTimeout(`${API_URL}/grade-levels`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -278,7 +278,7 @@ export default function SectionManagement() {
 
       console.log('Updating section with data:', formData);
 
-      const response = await fetchWithTimeout(`${API_URL}/sections/${selectedSection.id}`, {
+      const response = await fetchWithTimeout(`${API_URL}/grade-levels/${selectedSection.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -300,7 +300,7 @@ export default function SectionManagement() {
       setSections(sections.map(section => 
         section.id === selectedSection.id ? data.data : section
       ));
-      setIsEditModalVisible(false);
+    setIsEditModalVisible(false);
       setSelectedSection(null);
       setFormData(INITIAL_FORM_DATA);
       toast.show('Section updated successfully!', { type: 'success' });
@@ -329,7 +329,7 @@ export default function SectionManagement() {
       setLoading(true);
       setError(null);
 
-      const response = await fetchWithTimeout(`${API_URL}/sections/${selectedSection.id}`, {
+      const response = await fetchWithTimeout(`${API_URL}/grade-levels/${selectedSection.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -343,7 +343,7 @@ export default function SectionManagement() {
       }
 
       setSections(sections.filter(s => s.id !== selectedSection.id));
-      setIsDeleteModalVisible(false);
+    setIsDeleteModalVisible(false);
       toast.show('Section deleted successfully!', { type: 'success' });
     } catch (error: any) {
       console.error('Error deleting section:', error);
@@ -372,7 +372,7 @@ export default function SectionManagement() {
       if (!isEdit) {
         setLocalFormData(INITIAL_FORM_DATA);
       } else {
-        setLocalFormData(formData);
+      setLocalFormData(formData);
       }
       setFormErrors({});
     }, [isEdit, formData]);
@@ -412,7 +412,7 @@ export default function SectionManagement() {
           setLoading(true);
           if (isEdit && selectedSection) {
             // Handle edit
-            const response = await fetchWithTimeout(`${API_URL}/sections/${selectedSection.id}`, {
+            const response = await fetchWithTimeout(`${API_URL}/grade-levels/${selectedSection.id}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -435,7 +435,7 @@ export default function SectionManagement() {
             toast.show('Section updated successfully!', { type: 'success' });
           } else {
             // Handle add
-            const response = await fetchWithTimeout(`${API_URL}/sections`, {
+            const response = await fetchWithTimeout(`${API_URL}/grade-levels`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

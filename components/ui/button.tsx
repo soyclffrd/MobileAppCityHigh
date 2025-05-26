@@ -8,22 +8,29 @@ interface ButtonProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   type?: 'button' | 'submit';
+  disabled?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({ onPress, title, variant = 'default', size = 'md', className, type = 'button' }) => {
+export const Button: React.FC<ButtonProps> = ({ onPress, title, variant = 'default', size = 'md', className, type = 'button', disabled = false }) => {
   const buttonStyle = [
     styles.button,
     variant === 'outline' ? styles.outlineButton : styles.defaultButton,
     size === 'sm' ? styles.smallButton : size === 'lg' ? styles.largeButton : styles.mediumButton,
+    disabled && styles.buttonDisabled
   ];
 
   const textStyle = [
     styles.buttonText,
     variant === 'outline' ? { color: '#007AFF' } : { color: '#FFFFFF' },
+    disabled && styles.buttonTextDisabled
   ];
 
   return (
-    <TouchableOpacity onPress={onPress} style={buttonStyle}>
+    <TouchableOpacity 
+      onPress={onPress} 
+      style={buttonStyle}
+      disabled={disabled}
+    >
       <Text style={textStyle}>{title}</Text>
     </TouchableOpacity>
   );
@@ -57,4 +64,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
   },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonTextDisabled: {
+    color: '#999999',
+  }
 }); 
