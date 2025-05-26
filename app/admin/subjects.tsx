@@ -2,16 +2,16 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -391,6 +391,7 @@ const SubjectsScreen = () => {
   const SubjectForm = ({ isEdit }: { isEdit: boolean }) => {
     const [localFormData, setLocalFormData] = useState<FormData>(isEdit ? formData : INITIAL_FORM_DATA);
     const [formErrors, setFormErrors] = useState<Partial<FormData>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Reset form when modal opens
     useEffect(() => {
@@ -431,28 +432,92 @@ const SubjectsScreen = () => {
       return Object.keys(errors).length === 0;
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
+      console.log('Current form data:', localFormData);
+      
       if (validateForm()) {
         const validatedData = {
-          ...localFormData,
           name: localFormData.name?.trim() || '',
           code: localFormData.code?.trim() || '',
-          grade_level: localFormData.grade_level?.trim() || '',
-          strand: localFormData.strand?.trim() || '',
           status: localFormData.status,
-          students: localFormData.students || '0',
+          gradeLevel: localFormData.grade_level?.trim() || '',
+          strand: localFormData.strand?.trim() || '',
+          students: parseInt(localFormData.students) || 0,
           description: localFormData.description?.trim() || '',
         };
         
         console.log('Submitting form data:', validatedData);
-        setFormData(validatedData);
-        if (isEdit) {
-          handleSubmitEdit();
-        } else {
-          handleSubmitAdd();
+        
+        try {
+          setIsSubmitting(true);
+          if (isEdit && selectedSubject) {
+            // For editing existing subject
+            const response = await fetchWithTimeout(`${API_URL}/subjects/${selectedSubject.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(validatedData),
+            });
+
+            const data = await response.json();
+            console.log('Update response:', data);
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to update subject');
+            }
+
+            // Update the subjects list with the new data
+            setSubjects(prevSubjects => 
+              prevSubjects.map(s => s.id === selectedSubject.id ? {
+                ...data.subject,
+                status: formData.status,
+                grade_level: formData.grade_level,
+                strand: formData.strand,
+                students: parseInt(formData.students) || 0,
+                description: formData.description?.trim() || '',
+              } : s)
+            );
+            setIsEditModalVisible(false);
+            setSelectedSubject(null);
+            setFormData(INITIAL_FORM_DATA);
+            toast.show('Subject updated successfully!', { type: 'success' });
+          } else {
+            // For adding new subject
+            const response = await fetchWithTimeout(`${API_URL}/subjects`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(validatedData),
+            });
+
+            const data = await response.json();
+            console.log('Add response:', data);
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to add subject');
+            }
+
+            // Transform the response data to match our frontend structure
+            const newSubject = {
+              ...data.subject,
+              grade_level: data.subject.gradeLevel, // Map gradeLevel back to grade_level
+            };
+
+            setSubjects([newSubject, ...subjects]);
+            setIsAddModalVisible(false);
+            setFormData(INITIAL_FORM_DATA);
+            toast.show('Subject added successfully!', { type: 'success' });
+          }
+        } catch (error) {
+          console.error('Error submitting form:', error);
+          toast.show('Failed to submit form. Please try again.', { type: 'error' });
+        } finally {
+          setIsSubmitting(false);
         }
       } else {
-        Alert.alert('Validation Error', 'Please fill in all required fields correctly');
+        toast.show('Please fill in all required fields correctly', { type: 'error' });
       }
     };
 
@@ -560,11 +625,12 @@ const SubjectsScreen = () => {
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.submitButton}
+            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
+            disabled={isSubmitting}
           >
             <Text style={styles.submitButtonText}>
-              {isEdit ? 'Update Subject' : 'Add Subject'}
+              {isSubmitting ? 'Submitting...' : isEdit ? 'Update Subject' : 'Add Subject'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1061,6 +1127,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   submitButtonText: {
     color: '#fff',

@@ -7,6 +7,7 @@ const subjectsRouter = require('./routes/subjects');
 const strandsRouter = require('./routes/strands');
 const gradeLevelsRouter = require('./routes/grade-levels');
 const usersRouter = require('./routes/users');
+const sectionsRouter = require('./routes/sections');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/subjects', subjectsRouter);
 app.use('/api/strands', strandsRouter);
 app.use('/api/grade-levels', gradeLevelsRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/sections', sectionsRouter);
 
 // Add error handling middleware
 app.use((err, req, res, next) => {

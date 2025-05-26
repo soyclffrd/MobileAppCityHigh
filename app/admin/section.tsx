@@ -1,17 +1,17 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -117,15 +117,12 @@ export default function SectionManagement() {
       }
 
       const currentPage = isRefresh ? 1 : page;
+      const url = `${API_URL}/sections?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`;
       
-      console.log('Fetching sections:', {
-        page: currentPage,
-        limit: ITEMS_PER_PAGE,
-        search: searchQuery
-      });
+      console.log('Fetching sections from:', url);
 
       const response = await fetchWithTimeout(
-        `${API_URL}/grade-levels?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`,
+        url,
         {
           method: 'GET',
           headers: {
@@ -136,28 +133,48 @@ export default function SectionManagement() {
       );
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Server error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('Fetched sections:', data);
+      console.log('API Response:', data);
       
       if (data.success) {
+        console.log('Setting sections data:', data.data);
         if (isRefresh) {
           setSections(data.data || []);
+          setPage(1);
         } else {
-          setSections(prev => [...prev, ...(data.data || [])]);
+          // Filter out any potential duplicates before adding new items
+          const newSections = data.data || [];
+          setSections(prevSections => {
+            const existingIds = new Set(prevSections.map(section => section.id));
+            const uniqueNewSections = newSections.filter((section: Section) => !existingIds.has(section.id));
+            return [...prevSections, ...uniqueNewSections];
+          });
         }
-        setHasMore((data.data || []).length === ITEMS_PER_PAGE);
+        setHasMore(data.totalPages > currentPage);
         setRetryCount(0);
         if (!isRefresh) {
           setPage(prev => prev + 1);
         }
       } else {
+        console.error('API returned error:', data);
         throw new Error(data.message || 'Failed to fetch sections');
       }
     } catch (error: any) {
-      console.error('Error fetching sections:', error);
+      console.error('Error in fetchSections:', {
+        error,
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+      
       let errorMessage = 'Could not connect to server. ';
       
       if (error instanceof TypeError && error.message === 'Network request failed') {
@@ -171,6 +188,7 @@ export default function SectionManagement() {
       setError(errorMessage);
       
       if (retryCount < MAX_RETRIES) {
+        console.log(`Retrying... Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
         setTimeout(() => {
           setRetryCount(prev => prev + 1);
           fetchSections(isRefresh);
@@ -222,7 +240,7 @@ export default function SectionManagement() {
 
       console.log('Adding new section with data:', formData);
 
-      const response = await fetchWithTimeout(`${API_URL}/grade-levels`, {
+      const response = await fetchWithTimeout(`${API_URL}/sections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -278,7 +296,7 @@ export default function SectionManagement() {
 
       console.log('Updating section with data:', formData);
 
-      const response = await fetchWithTimeout(`${API_URL}/grade-levels/${selectedSection.id}`, {
+      const response = await fetchWithTimeout(`${API_URL}/sections/${selectedSection.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -329,7 +347,7 @@ export default function SectionManagement() {
       setLoading(true);
       setError(null);
 
-      const response = await fetchWithTimeout(`${API_URL}/grade-levels/${selectedSection.id}`, {
+      const response = await fetchWithTimeout(`${API_URL}/sections/${selectedSection.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -412,7 +430,7 @@ export default function SectionManagement() {
           setLoading(true);
           if (isEdit && selectedSection) {
             // Handle edit
-            const response = await fetchWithTimeout(`${API_URL}/grade-levels/${selectedSection.id}`, {
+            const response = await fetchWithTimeout(`${API_URL}/sections/${selectedSection.id}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -435,7 +453,7 @@ export default function SectionManagement() {
             toast.show('Section updated successfully!', { type: 'success' });
           } else {
             // Handle add
-            const response = await fetchWithTimeout(`${API_URL}/grade-levels`, {
+            const response = await fetchWithTimeout(`${API_URL}/sections`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

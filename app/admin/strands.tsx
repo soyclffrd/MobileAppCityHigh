@@ -1,17 +1,17 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useToast } from 'react-native-toast-notifications';
 
@@ -21,6 +21,7 @@ interface Strand {
   description: string;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 interface FormData {
@@ -33,44 +34,73 @@ const INITIAL_FORM_DATA: FormData = {
   description: '',
 };
 
-// Sample data
-const SAMPLE_STRANDS: Strand[] = [
-  {
-    id: 1,
-    name: 'STEM',
-    description: 'Science, Technology, Engineering, and Mathematics',
-    created_at: '2024-03-21T00:00:00Z',
-    updated_at: '2024-03-21T00:00:00Z'
-  },
-  {
-    id: 2,
-    name: 'ABM',
-    description: 'Accountancy, Business, and Management',
-    created_at: '2024-03-21T00:00:00Z',
-    updated_at: '2024-03-21T00:00:00Z'
-  },
-  {
-    id: 3,
-    name: 'HUMSS',
-    description: 'Humanities and Social Sciences',
-    created_at: '2024-03-21T00:00:00Z',
-    updated_at: '2024-03-21T00:00:00Z'
-  },
-  {
-    id: 4,
-    name: 'GAS',
-    description: 'General Academic Strand',
-    created_at: '2024-03-21T00:00:00Z',
-    updated_at: '2024-03-21T00:00:00Z'
+const API_URL = 'http://192.168.0.100:3001/api';
+const DEBOUNCE_DELAY = 1000; // 1 second delay
+const ITEMS_PER_PAGE = 10;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+
+// Add timeout configuration
+const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 30000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    console.log('Making request to:', url);
+    console.log('Request options:', {
+      method: options.method,
+      headers: options.headers,
+      signal: controller.signal
+    });
+
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': (options.headers as Record<string, string>)?.['Content-Type'] || 'application/json',
+      },
+    });
+
+    clearTimeout(id);
+    
+    console.log('Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
+    return response;
+  } catch (error: unknown) {
+    clearTimeout(id);
+    console.error('Fetch error details:', {
+      error,
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      if (error.message.includes('Failed to fetch')) {
+        throw new Error('Could not connect to the server. Please check if the server is running and accessible.');
+      }
+    }
+    throw error;
   }
-];
+};
 
 export default function StrandManagement() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [strands, setStrands] = useState<Strand[]>(SAMPLE_STRANDS);
-  const [loading, setLoading] = useState(false);
+  const [strands, setStrands] = useState<Strand[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const toast = useToast();
 
   // Modal states
@@ -82,21 +112,129 @@ export default function StrandManagement() {
   // Form states
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    // Simulate refresh delay
-    setTimeout(() => {
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        setPage(1);
+        setStrands([]);
+        fetchStrands(true);
+      }
+    }, DEBOUNCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchStrands(true);
+  }, []);
+
+  const fetchStrands = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      const currentPage = isRefresh ? 1 : page;
+      const url = `${API_URL}/strands?page=${currentPage}&limit=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchQuery)}`;
+      
+      console.log('Fetching strands from:', url);
+
+      const response = await fetchWithTimeout(
+        url,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('API Response:', data);
+      
+      if (data.success) {
+        console.log('Setting strands data:', data.strands);
+        if (isRefresh) {
+          setStrands(data.strands || []);
+          setPage(1);
+        } else {
+          // Filter out any potential duplicates before adding new items
+          const newStrands = data.strands || [];
+          setStrands(prevStrands => {
+            const existingIds = new Set(prevStrands.map(strand => strand.id));
+            const uniqueNewStrands = newStrands.filter((strand: Strand) => !existingIds.has(strand.id));
+            return [...prevStrands, ...uniqueNewStrands];
+          });
+        }
+        setHasMore(data.total > (currentPage * ITEMS_PER_PAGE));
+        setRetryCount(0);
+        if (!isRefresh) {
+          setPage(prev => prev + 1);
+        }
+      } else {
+        console.error('API returned error:', data);
+        throw new Error(data.message || 'Failed to fetch strands');
+      }
+    } catch (error: any) {
+      console.error('Error in fetchStrands:', {
+        error,
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+      
+      let errorMessage = 'Could not connect to server. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check if the server is running and your internet connection is stable.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      setError(errorMessage);
+      
+      if (retryCount < MAX_RETRIES) {
+        console.log(`Retrying... Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          fetchStrands(isRefresh);
+        }, RETRY_DELAY);
+      }
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
       setIsRefreshing(false);
-    }, 1000);
+    }
   };
 
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-    const filtered = SAMPLE_STRANDS.filter(strand =>
-      strand.name.toLowerCase().includes(text.toLowerCase()) ||
-      strand.description.toLowerCase().includes(text.toLowerCase())
-    );
-    setStrands(filtered);
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setPage(1);
+    setStrands([]);
+    fetchStrands(true);
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchStrands(false);
+    }
   };
 
   const handleAddStrand = () => {
@@ -118,76 +256,165 @@ export default function StrandManagement() {
     setIsDeleteModalVisible(true);
   };
 
-  const handleSubmitAdd = () => {
-    if (!formData.name?.trim()) {
-      toast.show('Please fill in all required fields', { type: 'error' });
-      return;
-    }
-
-    const newStrand: Strand = {
-      id: strands.length + 1,
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    setStrands([newStrand, ...strands]);
-    setIsAddModalVisible(false);
-    setFormData(INITIAL_FORM_DATA);
-    toast.show('Strand added successfully!', { type: 'success' });
-  };
-
-  const handleSubmitEdit = () => {
+  const handleSubmitEdit = async () => {
     if (!selectedStrand) return;
 
-    if (!formData.name?.trim()) {
-      toast.show('Please fill in all required fields', { type: 'error' });
-      return;
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!formData.name?.trim()) {
+        toast.show('Please fill in all required fields', { type: 'error' });
+        return;
+      }
+
+      const response = await fetchWithTimeout(`${API_URL}/strands/${selectedStrand.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Update response:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update strand');
+      }
+
+      setStrands(strands.map(strand => 
+        strand.id === selectedStrand.id ? data.strand : strand
+      ));
+      setIsEditModalVisible(false);
+      setSelectedStrand(null);
+      setFormData(INITIAL_FORM_DATA);
+      toast.show('Strand updated successfully!', { type: 'success' });
+    } catch (error: any) {
+      console.error('Error updating strand:', error);
+      let errorMessage = 'Failed to update strand. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check your internet connection and try again.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      toast.show(errorMessage, { type: 'error' });
+    } finally {
+      setLoading(false);
     }
-
-    const updatedStrand: Strand = {
-      ...selectedStrand,
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      updated_at: new Date().toISOString()
-    };
-
-    setStrands(strands.map(strand => 
-      strand.id === selectedStrand.id ? updatedStrand : strand
-    ));
-    setIsEditModalVisible(false);
-    setSelectedStrand(null);
-    setFormData(INITIAL_FORM_DATA);
-    toast.show('Strand updated successfully!', { type: 'success' });
   };
 
-  const handleConfirmDelete = () => {
+  const handleSubmitAdd = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!formData.name?.trim()) {
+        toast.show('Please fill in all required fields', { type: 'error' });
+        return;
+      }
+
+      const response = await fetchWithTimeout(`${API_URL}/strands`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Add response:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to add strand');
+      }
+
+      setStrands([data.strand, ...strands]);
+      setIsAddModalVisible(false);
+      setFormData(INITIAL_FORM_DATA);
+      toast.show('Strand added successfully!', { type: 'success' });
+    } catch (error: any) {
+      console.error('Error adding strand:', error);
+      let errorMessage = 'Failed to add strand. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check your internet connection and try again.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      toast.show(errorMessage, { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
     if (!selectedStrand) return;
 
-    setStrands(strands.filter(s => s.id !== selectedStrand.id));
-    setIsDeleteModalVisible(false);
-    toast.show('Strand deleted successfully!', { type: 'success' });
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetchWithTimeout(`${API_URL}/strands/${selectedStrand.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to delete strand');
+      }
+
+      setStrands(strands.filter(s => s.id !== selectedStrand.id));
+      setIsDeleteModalVisible(false);
+      toast.show('Strand deleted successfully!', { type: 'success' });
+    } catch (error: any) {
+      console.error('Error deleting strand:', error);
+      let errorMessage = 'Failed to delete strand. ';
+      
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        errorMessage += 'Please check your internet connection and try again.';
+      } else if (error.name === 'AbortError') {
+        errorMessage += 'Request timed out. Please try again.';
+      } else {
+        errorMessage += error.message || 'An unexpected error occurred.';
+      }
+      
+      toast.show(errorMessage, { type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const StrandForm = ({ isEdit, onMount }: { isEdit: boolean; onMount: () => void }) => {
+  const StrandForm = ({ isEdit }: { isEdit: boolean }) => {
     const [localFormData, setLocalFormData] = useState<FormData>(isEdit ? formData : INITIAL_FORM_DATA);
     const [formErrors, setFormErrors] = useState<Partial<FormData>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Reset form when modal opens
-    const resetForm = () => {
+    useEffect(() => {
       if (!isEdit) {
         setLocalFormData(INITIAL_FORM_DATA);
       } else {
         setLocalFormData(formData);
       }
       setFormErrors({});
-    };
-
-    // Call resetForm when the component mounts
-    React.useLayoutEffect(() => {
-      resetForm();
-      onMount();
     }, [isEdit, formData]);
 
     const handleLocalChange = (field: keyof FormData, value: string) => {
@@ -203,9 +430,6 @@ export default function StrandManagement() {
       
       if (!localFormData.name?.trim()) {
         errors.name = 'Strand name is required';
-      }
-      if (!localFormData.description?.trim()) {
-        errors.description = 'Description is required';
       }
 
       setFormErrors(errors);
@@ -225,14 +449,58 @@ export default function StrandManagement() {
         console.log('Submitting form data:', validatedData);
         
         try {
-          if (isEdit) {
-            await handleSubmitEdit();
+          setIsSubmitting(true);
+          if (isEdit && selectedStrand) {
+            // For editing existing strand
+            const response = await fetchWithTimeout(`${API_URL}/strands/${selectedStrand.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(validatedData),
+            });
+
+            const data = await response.json();
+            console.log('Update response:', data);
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to update strand');
+            }
+
+            setStrands(strands.map(strand => 
+              strand.id === selectedStrand.id ? data.strand : strand
+            ));
+            setIsEditModalVisible(false);
+            setSelectedStrand(null);
+            setFormData(INITIAL_FORM_DATA);
+            toast.show('Strand updated successfully!', { type: 'success' });
           } else {
-            await handleSubmitAdd();
+            // For adding new strand
+            const response = await fetchWithTimeout(`${API_URL}/strands`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(validatedData),
+            });
+
+            const data = await response.json();
+            console.log('Add response:', data);
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to add strand');
+            }
+
+            setStrands([data.strand, ...strands]);
+            setIsAddModalVisible(false);
+            setFormData(INITIAL_FORM_DATA);
+            toast.show('Strand added successfully!', { type: 'success' });
           }
         } catch (error) {
           console.error('Error submitting form:', error);
           toast.show('Failed to submit form. Please try again.', { type: 'error' });
+        } finally {
+          setIsSubmitting(false);
         }
       } else {
         toast.show('Please fill in all required fields correctly', { type: 'error' });
@@ -253,16 +521,16 @@ export default function StrandManagement() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.inputLabel}>Strand Name *</Text>
+        <Text style={styles.inputLabel}>Name *</Text>
         <TextInput
           style={[styles.input, formErrors.name && styles.inputError]}
           value={localFormData.name}
           onChangeText={(text) => handleLocalChange('name', text)}
           placeholder="Enter strand name"
         />
-        {formErrors.name && <Text style={styles.formErrorText}>{formErrors.name}</Text>}
+        {formErrors.name && <Text style={styles.errorText}>{formErrors.name}</Text>}
 
-        <Text style={styles.inputLabel}>Description *</Text>
+        <Text style={styles.inputLabel}>Description</Text>
         <TextInput
           style={[styles.input, { height: 80 }, formErrors.description && styles.inputError]}
           value={localFormData.description}
@@ -270,7 +538,7 @@ export default function StrandManagement() {
           placeholder="Enter description"
           multiline
         />
-        {formErrors.description && <Text style={styles.formErrorText}>{formErrors.description}</Text>}
+        {formErrors.description && <Text style={styles.errorText}>{formErrors.description}</Text>}
 
         <View style={styles.formActions}>
           <TouchableOpacity
@@ -283,11 +551,12 @@ export default function StrandManagement() {
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.submitButton}
+            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
+            disabled={isSubmitting}
           >
             <Text style={styles.submitButtonText}>
-              {isEdit ? 'Update Strand' : 'Add Strand'}
+              {isSubmitting ? 'Submitting...' : isEdit ? 'Update' : 'Add'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -304,7 +573,7 @@ export default function StrandManagement() {
             style={styles.searchInput}
             placeholder="Search strands..."
             value={searchQuery}
-            onChangeText={handleSearch}
+            onChangeText={setSearchQuery}
           />
         </View>
         <TouchableOpacity style={styles.notificationButton}>
@@ -349,43 +618,56 @@ export default function StrandManagement() {
       ) : (
         <FlatList
           data={strands}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.teacherCard}>
-              <View style={styles.teacherInfo}>
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <MaterialIcons name="school" size={30} color="#666" />
+          keyExtractor={(item) => item?.id?.toString() || Math.random().toString()}
+          renderItem={({ item }) => {
+            if (!item) return null;
+            return (
+              <View style={styles.teacherCard}>
+                <View style={styles.teacherInfo}>
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <MaterialIcons name="school" size={30} color="#666" />
+                  </View>
+                  <View style={styles.teacherDetails}>
+                    <Text style={styles.teacherName}>{item.name || 'Unnamed Strand'}</Text>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>ID:</Text>
+                      <Text style={styles.detailValue}>{item.id}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Description:</Text>
+                      <Text style={styles.detailValue}>{item.description || 'No description'}</Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.teacherDetails}>
-                  <Text style={styles.teacherName}>{item.name || 'Unnamed Strand'}</Text>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>ID:</Text>
-                    <Text style={styles.detailValue}>{item.id}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Description:</Text>
-                    <Text style={styles.detailValue}>{item.description || 'No description'}</Text>
-                  </View>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.editButton]}
+                    onPress={() => handleEditStrand(item)}
+                  >
+                    <Text style={styles.actionButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.deleteButton]}
+                    onPress={() => handleDeleteStrand(item)}
+                  >
+                    <Text style={styles.actionButtonText}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.editButton]}
-                  onPress={() => handleEditStrand(item)}
-                >
-                  <Text style={styles.actionButtonText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.deleteButton]}
-                  onPress={() => handleDeleteStrand(item)}
-                >
-                  <Text style={styles.actionButtonText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+            );
+          }}
           onRefresh={handleRefresh}
           refreshing={isRefreshing}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={() => (
+            isLoadingMore ? (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#1a73e8" />
+                <Text style={styles.loadingMoreText}>Loading more...</Text>
+              </View>
+            ) : null
+          )}
           contentContainerStyle={styles.teacherList}
         />
       )}
@@ -397,7 +679,7 @@ export default function StrandManagement() {
         onRequestClose={() => setIsAddModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <StrandForm isEdit={false} onMount={() => {}} />
+          <StrandForm isEdit={false} />
         </View>
       </Modal>
       {/* Edit Strand Modal */}
@@ -408,7 +690,7 @@ export default function StrandManagement() {
         onRequestClose={() => setIsEditModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <StrandForm isEdit={true} onMount={() => {}} />
+          <StrandForm isEdit={true} />
         </View>
       </Modal>
       {/* Delete Confirmation Modal */}
@@ -670,7 +952,7 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: '#ff4444',
   },
-  formErrorText: {
+  errorText: {
     color: '#ff4444',
     fontSize: 12,
     marginTop: -8,
@@ -700,6 +982,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   deleteConfirmation: {
     backgroundColor: '#fff',
@@ -774,13 +1059,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  errorText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#ff4444',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
   retryButton: {
     backgroundColor: '#1a73e8',
     paddingHorizontal: 24,
@@ -791,6 +1069,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  loadingMoreContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingMoreText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
   },
 });
 
