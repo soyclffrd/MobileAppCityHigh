@@ -13,8 +13,8 @@ async function migrate() {
     console.log('Connected to MySQL server');
 
     // Use the database
-    await connection.query('USE school_app');
-    console.log('Using school_app database');
+    await connection.query('USE school_management');
+    console.log('Using school_management database');
 
     // First, update any existing users to use the new role values
     await connection.query(`

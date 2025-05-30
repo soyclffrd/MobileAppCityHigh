@@ -5,7 +5,7 @@ const pool = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: '',
-  database: 'school_app',
+  database: 'school_management',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -37,7 +37,7 @@ async function testConnection() {
     const [autoIncrement] = await connection.query(`
       SELECT AUTO_INCREMENT 
       FROM information_schema.TABLES 
-      WHERE TABLE_SCHEMA = 'school_app' 
+      WHERE TABLE_SCHEMA = 'school_management' 
       AND TABLE_NAME = 'grade_levels'
     `);
     console.log('AUTO_INCREMENT value:', autoIncrement[0]);

@@ -11,11 +11,12 @@ const sectionsRouter = require('./routes/sections');
 
 const app = express();
 
-// Configure CORS
+// Configure CORS with specific origins
 app.use(cors({
-  origin: '*', // Allow all origins in development
+  origin: ['http://localhost:3000', 'http://192.168.0.100:3000', 'http://192.168.0.102:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true
 }));
 
 // Add request logging middleware
@@ -24,8 +25,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase JSON payload limit
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -51,12 +53,23 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('=== Server Started ===');
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Server is accessible at:`);
-  console.log(`- Local: http://localhost:${PORT}`);
-  console.log(`- Network: http://192.168.0.102:${PORT}`);
-  console.log(`- All interfaces: 0.0.0.0:${PORT}`);
-  console.log('=====================');
-}); 
+const startServer = (port) => {
+  app.listen(port, '0.0.0.0', () => {
+    console.log('=== Server Started ===');
+    console.log(`Server is running on port ${port}`);
+    console.log(`Server is accessible at:`);
+    console.log(`- Local: http://localhost:${port}`);
+    console.log(`- Network: http://192.168.0.102:${port}`);
+    console.log(`- All interfaces: 0.0.0.0:${port}`);
+    console.log('=====================');
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is busy, trying ${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+};
+
+startServer(PORT); 
